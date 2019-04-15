@@ -198,7 +198,7 @@ struct Configuration {
   bool bilateralFilter;
 
   /* UNUSED */
-  bool colouredVoxels;
+  bool color_integration;
 
   /*
    * UNUSED

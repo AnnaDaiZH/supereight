@@ -284,6 +284,8 @@ int processAll(DepthReader *reader, bool processFrame, bool renderImages,
 		raycasted = pipeline->raycasting(camera, config->mu, frame);
 
 		timings[5] = std::chrono::steady_clock::now();
+
+
 	}
 	if (renderImages) {
 		pipeline->renderDepth((unsigned char*)depthRender, pipeline->getComputationResolution());

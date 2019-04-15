@@ -112,7 +112,7 @@ class DenseSLAMSystem {
                     const Eigen::Vector3i& volume_resolution_,
                     const Eigen::Vector3f& volume_dimension_,
                     const Eigen::Vector3f& initPose,
-                    std::vector<int> &     pyramid,
+                    const std::vector<int> &     pyramid,
                     const Configuration&   config_);
     /**
      * Constructor using the initial camera position.
@@ -285,6 +285,7 @@ class DenseSLAMSystem {
     void renderDepth(unsigned char*         out,
                      const Eigen::Vector2i& outputSize);
 
+    void exploration();
     //
     // Getters
     //

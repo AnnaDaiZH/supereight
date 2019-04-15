@@ -320,3 +320,7 @@ void DenseSLAMSystem::dump_mesh(const std::string filename){
   se::algorithms::marching_cube(*volume_._map_index, select, inside, mesh);
   writeVtkMesh(filename.c_str(), mesh);
 }
+
+void DenseSLAMSystem::exloration(){
+
+};

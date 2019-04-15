@@ -34,4 +34,7 @@
 # Directories
 build
 doc
-
+.idea
+cmake*
+living_room_traj2_loop
+*.log
