@@ -528,8 +528,8 @@ std::pair<pose3D, float> CandidateView<T>::getBestCandidate(const VecPairPoseFlo
 //  const float dist_cost = 0.3;
   const float ig_cost = 0.4;
   for (const auto &cand : cand_list) {
-    std::cout << "[bestcand] position " << (cand.first.p.cast<float>() * res_).format(InLine) <<
-    std::endl;
+//    std::cout << "[bestcand] position " << (cand.first.p.cast<float>() * res_).format(InLine) <<
+//    std::endl;
     float yaw_diff = toEulerAngles(cand.first.q).yaw - toEulerAngles(curr_pose_.q).yaw;
 //    std::cout << "[bestcand] curr yaw " << toEulerAngles(curr_pose_.q).yaw << " to yaw "
 //              << toEulerAngles(cand.first.q).yaw << std::endl;
@@ -541,7 +541,7 @@ std::pair<pose3D, float> CandidateView<T>::getBestCandidate(const VecPairPoseFlo
     float t_yaw = fabs(yaw_diff / max_yaw_rate);
 //    std::cout << "[bestcand] yaw diff " << yaw_diff << " time needed " << t_yaw << std::endl;
     float utility = cand.second / (t_yaw);
-    std::cout << "[bestcond] utility " << utility << std::endl;
+//    std::cout << "[bestcond] utility " << utility << std::endl;
     if (max_utility < utility) {
       best_cand = cand.first;
       max_utility = utility;
