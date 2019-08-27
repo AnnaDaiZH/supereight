@@ -73,11 +73,14 @@ void CandidateView<T>::getCandidateViews(const map3i &frontier_blocks_map, const
     int rand_voxel = distribution_voxel(generator);
     VecVec3i frontier_voxelblock = frontier_voxels_map[rand_morton];
     Eigen::Vector3i candidate_frontier_voxel = frontier_voxels_map[rand_morton].at(rand_voxel);
-    if (boundHeight(&candidate_frontier_voxel.z(),
+    DLOG(INFO) << "height_max " << planning_config_.height_max << " " << planning_config_.height_min << " "
+    << ground_height_ ;
+     DLOG(INFO) << "z "<< candidate_frontier_voxel.z();
+    if (boundHeight(candidate_frontier_voxel.z(),
                     planning_config_.height_max + ground_height_,
                     planning_config_.height_min + ground_height_,
                     res_)) {
-
+    DLOG(INFO) << "z "<< candidate_frontier_voxel.z();
       frontier_voxelblock = frontier_voxels_map[se::keyops::encode(candidate_frontier_voxel.x(),
                                                                    candidate_frontier_voxel.y(),
                                                                    candidate_frontier_voxel.z(),
@@ -101,6 +104,7 @@ void CandidateView<T>::getCandidateViews(const map3i &frontier_blocks_map, const
 
 template<typename T>
 float CandidateView<T>::getViewInformationGain(pose3D &pose) {
+  DLOG(INFO) << pose.p.format(InLine);
   float gain = 0.0;
   const float r_max = farPlane; // equal to far plane
   // const float r_min = 0.01; // depth camera r min [m]  gazebo model
@@ -283,11 +287,14 @@ void CandidateView<T>::calculateCandidateViewGain() {
     }
     float information_gain= getViewInformationGain(candidates_[i].pose);
     candidates_[i].information_gain = information_gain;
+    DLOG(INFO) << information_gain;
   }
   float information_gain =getViewInformationGain(curr_pose_.pose);
   curr_pose_.information_gain = information_gain;
 
 }
+
+
 template<typename T>
 void CandidateView<T>::calculateUtility(Candidate &candidate, const float max_yaw_rate) {
 
@@ -462,11 +469,11 @@ VecPose CandidateView<T>::addPathSegments(const float sampling_dist, const pose3
   pose3D goal = goal_in;
   int start_h = start.p.z();
   int goal_h = goal.p.z();
-  boundHeight(&start_h,
+  boundHeight(start_h,
                     planning_config_.height_max + ground_height_,
                     planning_config_.height_min + ground_height_,
                     res_);
-  boundHeight(&goal_h,
+  boundHeight(goal_h,
                     planning_config_.height_max + ground_height_,
                     planning_config_.height_min + ground_height_,
                     res_);
