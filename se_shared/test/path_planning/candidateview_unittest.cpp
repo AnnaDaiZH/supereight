@@ -203,7 +203,7 @@ TEST_F(CandViewUnitTest, ClassSetup){
 
 
 
-TEST_F(CandViewUnitTest, GetViewInformationGain){
+TEST_F(CandViewUnitTest, GetViewInformationGain4Times){
 
   Eigen::Matrix4f curr_pose;
   curr_pose << 1 , 0,0, 15.f ,0,1,0,12.f, 0,0,1,13.5f, 0,0,0,1;
@@ -224,9 +224,51 @@ TEST_F(CandViewUnitTest, GetViewInformationGain){
   EXPECT_FLOAT_EQ(yaw_1, yaw_2);
   EXPECT_FLOAT_EQ(ig_1, ig_2);
 
+    cand_view.getViewInformationGain(cand_view.candidates_[1].pose);
+   yaw_1 =  se::exploration::toEulerAngles(cand_view.candidates_[1].pose.q).yaw ;
+   ig_1 = cand_view.candidates_[1].information_gain;
+  cand_view.getViewInformationGain(cand_view.candidates_[1].pose);
+   ig_2 = cand_view.candidates_[1].information_gain;
+   yaw_2 =  se::exploration::toEulerAngles(cand_view.candidates_[1].pose.q).yaw ;
+  EXPECT_FLOAT_EQ(yaw_1, yaw_2);
+  EXPECT_FLOAT_EQ(ig_1, ig_2);
 }
 
-TEST_F(CandViewUnitTest, OverallCheck){
+TEST_F(CandViewUnitTest, IGSparsityTest){
+
+  Eigen::Matrix4f curr_pose;
+  curr_pose << 1 , 0,0, 15.f ,0,1,0,12.f, 0,0,1,13.5f, 0,0,0,1;
+  auto collision_checker =
+      aligned_shared<se::exploration::CollisionCheckerV<OFusion> >(tree_, planner_config_);
+  int dphi[5] = {};
+  int dtheta[6] = {}
+  se::exploration::CandidateView<OFusion>
+      cand_view(volume_, planner_config_, collision_checker, dim_, config_, curr_pose, 0.1f, 12.1f);
+  cand_view.candidates_[0].pose.p = Eigen::Vector3f(50, 100, 75);
+  cand_view.candidates_[1].pose.p = Eigen::Vector3f(51, 115, 72);
+
+  cand_view.getViewInformationGain(cand_view.candidates_[0].pose);
+  float yaw_1 =  se::exploration::toEulerAngles(cand_view.candidates_[0].pose.q).yaw ;
+  float ig_1 = cand_view.candidates_[0].information_gain;
+  cand_view.getViewInformationGain(cand_view.candidates_[0].pose);
+  float ig_2 = cand_view.candidates_[0].information_gain;
+  float yaw_2 =  se::exploration::toEulerAngles(cand_view.candidates_[0].pose.q).yaw ;
+
+  EXPECT_FLOAT_EQ(yaw_1, yaw_2);
+  EXPECT_FLOAT_EQ(ig_1, ig_2);
+
+    cand_view.getViewInformationGain(cand_view.candidates_[1].pose);
+   yaw_1 =  se::exploration::toEulerAngles(cand_view.candidates_[1].pose.q).yaw ;
+   ig_1 = cand_view.candidates_[1].information_gain;
+  cand_view.getViewInformationGain(cand_view.candidates_[1].pose);
+   ig_2 = cand_view.candidates_[1].information_gain;
+   yaw_2 =  se::exploration::toEulerAngles(cand_view.candidates_[1].pose.q).yaw ;
+  EXPECT_FLOAT_EQ(yaw_1, yaw_2);
+  EXPECT_FLOAT_EQ(ig_1, ig_2);
+}
+
+
+TEST_F(CandViewUnitTest, GetRandCand){
   Eigen::Matrix4f curr_pose;
  curr_pose << 1 , 0,0, 15.f ,0,1,0,12.f, 0,0,1,13.5f, 0,0,0,1;
   auto collision_checker =
@@ -244,9 +286,6 @@ TEST_F(CandViewUnitTest, OverallCheck){
 
   int num_cand = cand_view.getNumValidCandidates();
   std::cout << "num_cand " << num_cand << std::endl;
-  cand_view.calculateCandidateViewGain();
-  DLOG(INFO) << cand_view.candidates_[0].information_gain ;
-  EXPECT_TRUE(cand_view.candidates_[0].information_gain != -1.f);
-  EXPECT_TRUE(cand_view.curr_pose_.information_gain != -1.f);
+  EXPECT_TRUE(num_cand>0);
 
 }
