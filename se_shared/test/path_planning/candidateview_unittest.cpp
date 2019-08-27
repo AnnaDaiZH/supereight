@@ -214,21 +214,21 @@ TEST_F(CandViewUnitTest, GetViewInformationGain4Times){
   cand_view.candidates_[0].pose.p = Eigen::Vector3f(50, 100, 75);
   cand_view.candidates_[1].pose.p = Eigen::Vector3f(51, 115, 72);
 
-  cand_view.getViewInformationGain(cand_view.candidates_[0].pose);
+  float ig_1 = cand_view.getViewInformationGain(cand_view.candidates_[0].pose);
   float yaw_1 =  se::exploration::toEulerAngles(cand_view.candidates_[0].pose.q).yaw ;
-  float ig_1 = cand_view.candidates_[0].information_gain;
-  cand_view.getViewInformationGain(cand_view.candidates_[0].pose);
-  float ig_2 = cand_view.candidates_[0].information_gain;
+
+ float ig_2 =  cand_view.getViewInformationGain(cand_view.candidates_[0].pose);
+
   float yaw_2 =  se::exploration::toEulerAngles(cand_view.candidates_[0].pose.q).yaw ;
 
   EXPECT_FLOAT_EQ(yaw_1, yaw_2);
   EXPECT_FLOAT_EQ(ig_1, ig_2);
 
-    cand_view.getViewInformationGain(cand_view.candidates_[1].pose);
+   ig_1 =  cand_view.getViewInformationGain(cand_view.candidates_[1].pose);
    yaw_1 =  se::exploration::toEulerAngles(cand_view.candidates_[1].pose.q).yaw ;
-   ig_1 = cand_view.candidates_[1].information_gain;
-  cand_view.getViewInformationGain(cand_view.candidates_[1].pose);
-   ig_2 = cand_view.candidates_[1].information_gain;
+
+  ig_2 = cand_view.getViewInformationGain(cand_view.candidates_[1].pose);
+
    yaw_2 =  se::exploration::toEulerAngles(cand_view.candidates_[1].pose.q).yaw ;
   EXPECT_FLOAT_EQ(yaw_1, yaw_2);
   EXPECT_FLOAT_EQ(ig_1, ig_2);
@@ -239,32 +239,36 @@ TEST_F(CandViewUnitTest, IGSparsityTest){
   Eigen::Matrix4f curr_pose;
   curr_pose << 1 , 0,0, 15.f ,0,1,0,12.f, 0,0,1,13.5f, 0,0,0,1;
   auto collision_checker =
-      aligned_shared<se::exploration::CollisionCheckerV<OFusion> >(tree_, planner_config_);
-  int dphi[5] = {};
-  int dtheta[6] = {}
-  se::exploration::CandidateView<OFusion>
-      cand_view(volume_, planner_config_, collision_checker, dim_, config_, curr_pose, 0.1f, 12.1f);
-  cand_view.candidates_[0].pose.p = Eigen::Vector3f(50, 100, 75);
-  cand_view.candidates_[1].pose.p = Eigen::Vector3f(51, 115, 72);
+  aligned_shared<se::exploration::CollisionCheckerV<OFusion> >(tree_, planner_config_);
+  int dphi[4] = {1, 5 , 10, 15};
+  int dtheta[4] = {1, 10, 20, 30};
+    std::chrono::time_point<std::chrono::steady_clock> timings[2];
+  for (int i = 0; i < 4 ; i++ ){
 
-  cand_view.getViewInformationGain(cand_view.candidates_[0].pose);
-  float yaw_1 =  se::exploration::toEulerAngles(cand_view.candidates_[0].pose.q).yaw ;
-  float ig_1 = cand_view.candidates_[0].information_gain;
-  cand_view.getViewInformationGain(cand_view.candidates_[0].pose);
-  float ig_2 = cand_view.candidates_[0].information_gain;
-  float yaw_2 =  se::exploration::toEulerAngles(cand_view.candidates_[0].pose.q).yaw ;
+    planner_config_.dtheta = dtheta[i];
+    planner_config_.dphi = dphi[i];
+    se::exploration::CandidateView<OFusion>
+    cand_view(volume_, planner_config_, collision_checker, dim_, config_, curr_pose, 0.1f, 12.1f);
+    cand_view.candidates_[0].pose.p = Eigen::Vector3f(50, 100, 75);
+    timings[0] = std::chrono::steady_clock::now();
+    float ig_1 = cand_view.getViewInformationGain(cand_view.candidates_[0].pose);
 
-  EXPECT_FLOAT_EQ(yaw_1, yaw_2);
-  EXPECT_FLOAT_EQ(ig_1, ig_2);
+    timings[1] = std::chrono::steady_clock::now();
+    double progress_time = std::chrono::duration_cast<std::chrono::duration<double> >
+    (timings[1] - timings[0]).count();
+    float yaw_1 =  se::exploration::toEulerAngles(cand_view.candidates_[0].pose.q).yaw ;
 
-    cand_view.getViewInformationGain(cand_view.candidates_[1].pose);
-   yaw_1 =  se::exploration::toEulerAngles(cand_view.candidates_[1].pose.q).yaw ;
-   ig_1 = cand_view.candidates_[1].information_gain;
-  cand_view.getViewInformationGain(cand_view.candidates_[1].pose);
-   ig_2 = cand_view.candidates_[1].information_gain;
-   yaw_2 =  se::exploration::toEulerAngles(cand_view.candidates_[1].pose.q).yaw ;
-  EXPECT_FLOAT_EQ(yaw_1, yaw_2);
-  EXPECT_FLOAT_EQ(ig_1, ig_2);
+    float ig_2 = cand_view.getViewInformationGain(cand_view.candidates_[0].pose);
+    float yaw_2 =  se::exploration::toEulerAngles(cand_view.candidates_[0].pose.q).yaw ;
+    LOG(INFO) <<"theta " << dtheta[i] << " phi " << dphi[i]<< " "<< ig_1 << " time " << progress_time ;
+    int n_col = planner_config_.fov_hor * 0.75 / dphi[i];
+    int n_row = 360 / dtheta[i];
+    LOG(INFO)<< "time per ray " << progress_time/ (n_col*n_row) << " num ray " << n_row*n_col;
+
+    EXPECT_FLOAT_EQ(yaw_1, yaw_2);
+    EXPECT_FLOAT_EQ(ig_1, ig_2);
+  }
+
 }
 
 
@@ -273,19 +277,57 @@ TEST_F(CandViewUnitTest, GetRandCand){
  curr_pose << 1 , 0,0, 15.f ,0,1,0,12.f, 0,0,1,13.5f, 0,0,0,1;
   auto collision_checker =
       aligned_shared<se::exploration::CollisionCheckerV<OFusion> >(tree_, planner_config_);
-  se::exploration::CandidateView<OFusion>
-      cand_view(volume_, planner_config_, collision_checker, dim_, config_, curr_pose, 0.1f, 12.1f);
+    std::chrono::time_point<std::chrono::steady_clock> timings[2];
 
-
+ int num_sample[3] = {10, 20, 30};
+ for(int i = 0 ; i < 3 ; i ++){
   int frontier_cluster_size = planner_config_.frontier_cluster_size;
+  planner_config_.num_cand_views = num_sample[i];
+    se::exploration::CandidateView<OFusion>
+      cand_view(volume_, planner_config_, collision_checker, dim_, config_, curr_pose, 0.1f, 12.1f);
+    timings[0] = std::chrono::steady_clock::now();
   while(cand_view.getNumValidCandidates()==0){
+
     cand_view.getCandidateViews(morton_code_, frontier_cluster_size);
     frontier_cluster_size/=2;
   }
-
+    timings[1] = std::chrono::steady_clock::now();
+    double progress_time = std::chrono::duration_cast<std::chrono::duration<double> >
+    (timings[1] - timings[0]).count();
 
   int num_cand = cand_view.getNumValidCandidates();
-  std::cout << "num_cand " << num_cand << std::endl;
-  EXPECT_TRUE(num_cand>0);
+  LOG(INFO) << "num_cand " << num_cand << " cluster size " << frontier_cluster_size <<
+  " progress time " << progress_time;
 
+  EXPECT_TRUE(num_cand>0);
+}
+}
+
+TEST_F(CandViewUnitTest, AddSegments){
+  Eigen::Matrix4f curr_pose;
+ curr_pose << 1 , 0,0, 15.f ,0,1,0,12.f, 0,0,1,13.5f, 0,0,0,1;
+  auto collision_checker =
+      aligned_shared<se::exploration::CollisionCheckerV<OFusion> >(tree_, planner_config_);
+    std::chrono::time_point<std::chrono::steady_clock> timings[2];
+ se::exploration::pose3D start;
+ start = {{50, 100, 75}, {1.f, 0.f, 0.f, 0.f}};
+ se::exploration::pose3D end;
+ end = {{60, 120, 75}, {1.f, 0.f, 0.f, 0.f}};
+
+ float sampling_dist[3] = {0.4, 0.8, 1.2};
+ int num_seg[3] = {13, 7, 5};
+ for(int i = 0 ; i < 3 ; i ++){
+
+    se::exploration::CandidateView<OFusion>
+      cand_view(volume_, planner_config_, collision_checker, dim_, config_, curr_pose, 0.1f, 12.1f);
+    timings[0] = std::chrono::steady_clock::now();
+    VecPose path = cand_view.addPathSegments(sampling_dist[i], start, end );
+    timings[1] = std::chrono::steady_clock::now();
+    double progress_time = std::chrono::duration_cast<std::chrono::duration<double> >
+    (timings[1] - timings[0]).count();
+
+
+  LOG(INFO) << "samling dist " << sampling_dist[i]<< " path size "<< path.size() << " progress time " << progress_time;
+  EXPECT_EQ(path.size(), num_seg[i] );
+}
 }

@@ -64,14 +64,14 @@ void CandidateView<T>::getCandidateViews(const map3i &frontier_blocks_map, const
     const int rand_num = distribution_block(generator);
     std::advance(it, rand_num);
     uint64_t rand_morton = it->first;
-    if (frontier_voxels_map[rand_morton].size() < frontier_cluster_size) {
+    if (frontier_voxels_map[rand_morton].size() < frontier_cluster_size || frontier_voxels_map[rand_morton].size() ==0) {
       continue;
     }
     std::uniform_int_distribution<int>
         distribution_voxel(0, frontier_voxels_map[rand_morton].size() - 1);
     // random frontier voxel inside the the randomly chosen voxel block
     int rand_voxel = distribution_voxel(generator);
-    VecVec3i frontier_voxelblock = frontier_voxels_map[rand_morton];
+    // VecVec3i frontier_voxelblock = frontier_voxels_map[rand_morton];
     Eigen::Vector3i candidate_frontier_voxel = frontier_voxels_map[rand_morton].at(rand_voxel);
     DLOG(INFO) << "height_max " << planning_config_.height_max << " " << planning_config_.height_min << " "
     << ground_height_ ;
@@ -81,11 +81,11 @@ void CandidateView<T>::getCandidateViews(const map3i &frontier_blocks_map, const
                     planning_config_.height_min + ground_height_,
                     res_)) {
     DLOG(INFO) << "z "<< candidate_frontier_voxel.z();
-      frontier_voxelblock = frontier_voxels_map[se::keyops::encode(candidate_frontier_voxel.x(),
-                                                                   candidate_frontier_voxel.y(),
-                                                                   candidate_frontier_voxel.z(),
-                                                                   volume_._map_index->leaf_level(),
-                                                                   volume_._map_index->max_level())];
+      // frontier_voxelblock = frontier_voxels_map[se::keyops::encode(candidate_frontier_voxel.x(),
+      //                                                              candidate_frontier_voxel.y(),
+      //                                                              candidate_frontier_voxel.z(),
+      //                                                              volume_._map_index->leaf_level(),
+      //                                                              volume_._map_index->max_level())];
 
     }
     bool is_free = pcc_->isSphereSkeletonFreeCand(candidate_frontier_voxel, static_cast<int>(
@@ -478,7 +478,7 @@ VecPose CandidateView<T>::addPathSegments(const float sampling_dist, const pose3
                     planning_config_.height_min + ground_height_,
                     res_);
 
-  LOG(INFO) << start.p.format(InLine) << " " << start_h;
+  DLOG(INFO) << start.p.format(InLine) << " " << start_h;
   start.p.z() =(float)start_h ;
   goal.p.z() = (float)goal_h;
   path_out.push_back(start);
@@ -487,7 +487,7 @@ VecPose CandidateView<T>::addPathSegments(const float sampling_dist, const pose3
   for (float t = sampling_dist_v; t < dist; t += sampling_dist_v) {
     Eigen::Vector3f intermediate_point = start.p + dir * t;
     pose3D tmp(intermediate_point, {1.f, 0.f, 0.f, 0.f});
-    LOG(INFO) << "intermediate_point " << intermediate_point.format(InLine);
+    DLOG(INFO) << "intermediate_point " << intermediate_point.format(InLine);
     path_out.push_back(tmp);
 
   }

@@ -85,7 +85,7 @@ inline Planning_Configuration getDefaultPlanningConfig() {
   config.skeleton_sample_precision = 0.05;
   config.ompl_solving_time = 0.5;
   config.min_loop_for_termination = 10;
-  config.frontier_cluster_size = 20;
+  config.frontier_cluster_size = 12;
   config.planner_type = kInformedRrtStar;
   config.local_minima_radius = 1.f;
   config.ceiling_height = 3.0f;
