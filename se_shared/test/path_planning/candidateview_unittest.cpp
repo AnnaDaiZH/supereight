@@ -263,7 +263,47 @@ TEST_F(CandViewUnitTest, IGSparsityTest){
     LOG(INFO) <<"theta " << dtheta[i] << " phi " << dphi[i]<< " "<< ig_1 << " time " << progress_time ;
     int n_col = planner_config_.fov_hor * 0.75 / dphi[i];
     int n_row = 360 / dtheta[i];
-    LOG(INFO)<< "time per ray " << progress_time/ (n_col*n_row) << " num ray " << n_row*n_col;
+    LOG(INFO)<< "time per ray " << progress_time/ (n_col*n_row) <<
+    "IG per ray "<< ig_1/(n_col*n_row) << " num ray " << n_row*n_col;
+
+    EXPECT_FLOAT_EQ(yaw_1, yaw_2);
+    EXPECT_FLOAT_EQ(ig_1, ig_2);
+  }
+
+}
+
+
+TEST_F(CandViewUnitTest, IGSparsityTest2){
+
+  Eigen::Matrix4f curr_pose;
+  curr_pose << 1 , 0,0, 15.f ,0,1,0,12.f, 0,0,1,13.5f, 0,0,0,1;
+  auto collision_checker =
+  aligned_shared<se::exploration::CollisionCheckerV<OFusion> >(tree_, planner_config_);
+  int dphi[4] = {1, 5 , 10, 15};
+  int dtheta[4] = {1, 10, 20, 30};
+    std::chrono::time_point<std::chrono::steady_clock> timings[2];
+  for (int i = 0; i < 4 ; i++ ){
+
+    planner_config_.dtheta = dtheta[i];
+    planner_config_.dphi = dphi[i];
+    se::exploration::CandidateView<OFusion>
+    cand_view(volume_, planner_config_, collision_checker, dim_, config_, curr_pose, 0.1f, 12.1f);
+    cand_view.candidates_[0].pose.p = Eigen::Vector3f(57, 85, 76);
+    timings[0] = std::chrono::steady_clock::now();
+    float ig_1 = cand_view.getViewInformationGain(cand_view.candidates_[0].pose);
+
+    timings[1] = std::chrono::steady_clock::now();
+    double progress_time = std::chrono::duration_cast<std::chrono::duration<double> >
+    (timings[1] - timings[0]).count();
+    float yaw_1 =  se::exploration::toEulerAngles(cand_view.candidates_[0].pose.q).yaw ;
+
+    float ig_2 = cand_view.getViewInformationGain(cand_view.candidates_[0].pose);
+    float yaw_2 =  se::exploration::toEulerAngles(cand_view.candidates_[0].pose.q).yaw ;
+    LOG(INFO) <<"theta " << dtheta[i] << " phi " << dphi[i]<< " "<< ig_1 << " time " << progress_time ;
+    int n_col = planner_config_.fov_hor * 0.75 / dphi[i];
+    int n_row = 360 / dtheta[i];
+    LOG(INFO)<< "time per ray " << progress_time/ (n_col*n_row) <<
+    "IG per ray "<< ig_1/(n_col*n_row) << " num ray " << n_row*n_col;
 
     EXPECT_FLOAT_EQ(yaw_1, yaw_2);
     EXPECT_FLOAT_EQ(ig_1, ig_2);
@@ -321,13 +361,13 @@ TEST_F(CandViewUnitTest, AddSegments){
     se::exploration::CandidateView<OFusion>
       cand_view(volume_, planner_config_, collision_checker, dim_, config_, curr_pose, 0.1f, 12.1f);
     timings[0] = std::chrono::steady_clock::now();
-    VecPose path = cand_view.addPathSegments(sampling_dist[i], start, end );
+    VecPose path = cand_view.addPathSegments( start, end );
     timings[1] = std::chrono::steady_clock::now();
     double progress_time = std::chrono::duration_cast<std::chrono::duration<double> >
     (timings[1] - timings[0]).count();
 
 
-  LOG(INFO) << "samling dist " << sampling_dist[i]<< " path size "<< path.size() << " progress time " << progress_time;
+  LOG(INFO) << "samling dist " << planner_config_.max_rrt_edge_length<< " path size "<< path.size() << " progress time " << progress_time;
   EXPECT_EQ(path.size(), num_seg[i] );
 }
 }
