@@ -36,6 +36,7 @@
 #include "se/config.h"
 #include "se/utils/eigen_utils.h"
 #include "exploration_utils.hpp"
+#include "planning_history.hpp"
 
 #include "se/path_planner_ompl.hpp"
 
@@ -97,6 +98,8 @@ class CandidateView {
 
   float getTargetIG() const { return ig_target_; }
   int getNumValidCandidates() const {return num_cands_;}
+
+  void insertOldCandidates (VecCandidate &old_candidates);
 
 
   VecCandidate candidates_;
@@ -188,14 +191,15 @@ int getExplorationPath(std::shared_ptr<Octree<T> > octree_ptr,
                         const Eigen::Vector3i &lower_bound,
                         const Eigen::Vector3i &upper_bound,
                         const float ground_height,
+                        PlanningHistoryManager<T> &planning_history_manager,
                         VecPose &path,
                         VecPose &cand_views,
                         VecCandidate &candidates,
                         Candidate &best_candidate) {
 
+
   auto collision_checker_v = aligned_shared<CollisionCheckerV<T> >(octree_ptr, planning_config);
-  // auto path_planner_ompl_ptr =
-  // aligned_shared<PathPlannerOmpl<T> >(octree_ptr, collision_checker_v, planning_config);
+
   LOG(INFO) << "frontier map size " << frontier_map.size();
   // Candidate view generation
   CandidateView<T>
@@ -206,13 +210,17 @@ int getExplorationPath(std::shared_ptr<Octree<T> > octree_ptr,
     frontier_cluster_size/=2;
   }
 
+
   pose3D start = getCurrPose(pose, res);
   bool valid_path = false;
 
-  // if (size > 1) {
-// #pragma omp parallel for
-  for (int i = 0; i < planning_config.num_cand_views; i++) {
+  candidate_view.calculateCandidateViewGain();
+  candidate_view.candidates_.resize(planning_config.num_cand_views +planning_history_manager.getOldCandidates().size() );
+  LOG(INFO) << candidate_view.candidates_.size() ;
+  candidate_view.insertOldCandidates(planning_history_manager.getOldCandidates());
+
 #pragma omp parallel for
+  for (int i = 0; i < candidate_view.candidates_.size(); i++) {
     if (candidate_view.candidates_[i].pose.p != Eigen::Vector3f(0, 0, 0)) {
       auto collision_checker = aligned_shared<CollisionCheckerV<T> >(octree_ptr, planning_config);
       auto path_planner_ompl_ptr =
@@ -258,6 +266,7 @@ int getExplorationPath(std::shared_ptr<Octree<T> > octree_ptr,
   }
 
 
+
   int best_cand_idx = -1;
   bool use_curr_pose = true;
   bool force_travelling = candidate_view.curr_pose_.information_gain < candidate_view.getTargetIG();
@@ -277,7 +286,7 @@ int getExplorationPath(std::shared_ptr<Octree<T> > octree_ptr,
   // }
   // TODO make this nicer
 
-
+  planning_history_manager.insertNewCandidates(candidate_view.candidates_);
   VecPose path_tmp;
   if (valid_path && (!use_curr_pose || force_travelling)) {
      // candidate_view.addPathSegments(planning_config.robot_safety_radius*2.5 ,best_cand_idx);
@@ -294,12 +303,26 @@ int getExplorationPath(std::shared_ptr<Octree<T> > octree_ptr,
     }
     cand_views.push_back(candidate_view.candidates_[i].pose);
   }
-
+  float dist_tmp = 0.f;
+  Eigen::Vector3f last_pos = path_tmp.front().p;
   for (const auto &pose : path_tmp) {
     DLOG(INFO) << "cand view " << (pose.p * res).format(InLine) << " " << pose.q.w() << " "
                << pose.q.vec().format(InLine);
+
+    dist_tmp+= (pose.p - last_pos).norm();
     path.push_back(pose);
+    path_tmp.erase(path_tmp.begin());
+    if(dist_tmp> planning_config.planner_dist_max/res){
+      LOG(INFO) << "dist "<<dist_tmp*res << " path size " << path.size();
+      break;
+    }
   }
+
+  int use_history_path = planning_history_manager.useHistoryPath(path);
+
+  planning_history_manager.updateHistoryPath(best_candidate, path);
+
+  LOG(INFO) << "use history path " << use_history_path;
   if (candidate_view.getExplorationStatus() == 1) {
     return 1;
   } else {

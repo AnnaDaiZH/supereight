@@ -97,7 +97,8 @@ TEST_F(PlanningHistoryUnitTest, UpdateHistoryPathTwice){
   best_candidate.path.push_back({ {0.2f, 0.2f, 0.2f}, {1.f, 0.f, 0.f, 0.f}});
   best_candidate.path.push_back({ {0.3f, 0.2f, 0.2f}, {1.f, 0.f, 0.f, 0.f}});
   best_candidate.path.push_back({ {0.4f, 0.2f, 0.2f}, {1.f, 0.f, 0.f, 0.f}});
-
+  best_candidate.path.erase(best_candidate.path.begin());
+  LOG(INFO)<< "siez " <<best_candidate.path.size() << " front " << best_candidate.path.begin()->p.format(InLine);
   history_manager.updateHistoryPath(best_candidate, path);
 
   EXPECT_EQ(history_manager.getLastPlannedTrajectory().path.size(), best_candidate.path.size());
@@ -133,7 +134,7 @@ TEST_F(PlanningHistoryUnitTest, UpdateValidCandidatesDeleteAll) {
   history_manager.insertNewCandidates(old_candidates);
   EXPECT_EQ(history_manager.getOldCandidates().size(), 3 );
   history_manager.updateValidCandidates(curr_pose);
-  EXPECT_EQ(history_manager.getOldCandidates().size(), 0);
+  EXPECT_EQ(history_manager.getOldCandidates().size(), 3);
 }
 
 TEST_F(PlanningHistoryUnitTest, UpdateValidCandidates2Frontiers) {
@@ -162,7 +163,7 @@ TEST_F(PlanningHistoryUnitTest, UpdateValidCandidates2Frontiers) {
   history_manager.insertNewCandidates(old_candidates);
   EXPECT_EQ(history_manager.getOldCandidates().size(), 3 );
   history_manager.updateValidCandidates(curr_pose);
-  EXPECT_EQ(history_manager.getOldCandidates().size(), 2);
+  EXPECT_EQ(history_manager.getOldCandidates().size(), 3);
 }
 
 TEST_F(PlanningHistoryUnitTest, UpdateValidCandidatesNoMapUpdate) {
@@ -197,9 +198,7 @@ TEST_F(PlanningHistoryUnitTest, UpdateValidCandidatesNoMapUpdate) {
 
 
   history_manager.updateValidCandidates(curr_pose);
-  EXPECT_EQ(history_manager.getOldCandidates().size(), 2);
-  EXPECT_EQ(history_manager.getOldCandidates().back().information_gain, -1.f);
-  EXPECT_EQ(history_manager.getOldCandidates().back().utility, -1.f);
+  EXPECT_EQ(history_manager.getOldCandidates().size(), 0);
 }
 
 

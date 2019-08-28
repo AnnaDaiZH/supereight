@@ -537,14 +537,14 @@ int DenseSLAMSystem::planning(VecPose &path,
                                       lower_map_bound_v_,
                                       upper_map_bound_v_,
                                       ground_height,
+                                      planning_history_manager_,
                                       path,
                                       cand_views,
                                       candidates,
                                       best_candidate
                                       );
-  planning_history_manager_.insertNewCandidates(candidates);
-  planning_history_manager_.updateHistoryPath(best_candidate, path);
 
+  LOG(INFO) <<"path history size "<<  planning_history_manager_.getPathHistory().size() ;
   return exploration_done;
 //  std::cout << "[se/denseSLAM] path length " << path.size() <<std::endl;
 }

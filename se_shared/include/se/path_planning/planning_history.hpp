@@ -55,7 +55,7 @@ class PlanningHistoryManager {
    void updateValidCandidates(const Eigen::Matrix4f &curr_pose);
    int useHistoryPath(const VecPose &path_short);
 
-   VecCandidate getOldCandidates(){return candidates_old_;}
+   VecCandidate& getOldCandidates(){return candidates_old_;}
    Candidate getLastPlannedTrajectory() {return last_path_;}
    VecCandidate getPathHistory(){return path_history_;}
    int getLocalMinimaCounter()const {return local_minima_counter_;}
@@ -96,10 +96,12 @@ void PlanningHistoryManager<FieldType>::updateHistoryPath(const Candidate &path,
 
 template<typename FieldType>
 void PlanningHistoryManager<FieldType>::insertNewCandidates(const VecCandidate &candidates){
+  LOG(INFO)<< candidates.size();
    if(candidates_old_.empty()){
    	for (const auto& new_cand : candidates)
    	{
    		candidates_old_.push_back(new_cand);
+      DLOG(INFO) << candidates_old_.back().pose.p.format(InLine);
    	}
    	return;
    }
@@ -121,24 +123,20 @@ void PlanningHistoryManager<FieldType>::updateValidCandidates(const Eigen::Matri
 	Eigen::Vector3i curr_position_v = (curr_position/ voxel_dim_).cast<int>();
 	if(candidates_old_.empty()) return;
 	// check if the candidate is still a frontier
+  DLOG(INFO) << candidates_old_.size();
   for( auto it = candidates_old_.begin() ; it != candidates_old_.end();){
-  	if(octree_ptr_->get(it->pose.p.template cast<int>()).st != voxel_state::kFrontier){
+    Eigen::Vector3f dist = curr_position_v.cast<float>() - it->pose.p;
+    DLOG(INFO) << it->pose.p.format(InLine);
+  	// if(octree_ptr_->get(it->pose.p.template cast<int>()).st != voxel_state::kFrontier
+      // || dist.norm() < farPlane*2/voxel_dim_){
+    if( dist.norm() < farPlane*2/voxel_dim_){
+      DLOG(INFO) << it->pose.p.format(InLine);
       it = candidates_old_.erase(it);
-  	} else{
-      Eigen::Vector3f dist = curr_position_v.cast<float>() - it->pose.p;
-  		if(dist.norm() < farPlane*2/voxel_dim_){
-        it->information_gain = -1.f;
-        it->utility = -1.f;
-  		}
-  		++it;
+
+  	} else{it++;}
+
   	}
-  }
-
-	// if still a frontier
-    // use the current pose and validate if any of the old candidates are within the updated proximity
-
-	// hence the IG has to be recalculated
-
+DLOG(INFO) << candidates_old_.size();
 }
 
 
@@ -155,7 +153,7 @@ template<typename FieldType>
 int PlanningHistoryManager<FieldType>::useHistoryPath(const VecPose &path_short){
   Eigen::Vector3f dist_to_last_goal = path_short.back().p-path_history_.back().path.back().p;
 // check if the end point is in the local minima area
-  if(dist_to_last_goal.norm() < planning_params_.local_minima_radius){
+  if(dist_to_last_goal.norm() < planning_params_.local_minima_radius/ voxel_dim_){
     if(local_minima_counter_>= 2){
   // if the counter exceeds threshold, send old path back
       return 1;

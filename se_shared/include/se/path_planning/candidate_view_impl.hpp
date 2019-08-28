@@ -54,7 +54,8 @@ void CandidateView<T>::getCandidateViews(const map3i &frontier_blocks_map, const
   }
   // random candidate view generator
   std::random_device rd;
-  std::default_random_engine generator(rd());
+  const int seed = 13; // fix seed
+  std::default_random_engine generator(seed);
   std::uniform_int_distribution<int> distribution_block(0, frontier_blocks_map.size() - 1);
 
 #pragma omp parallel for
@@ -366,7 +367,6 @@ int CandidateView<T>::getBestCandidate() {
 
 template<typename T>
 VecPose CandidateView<T>::getFinalPath(Candidate &candidate ) {
-  const float sampling_dist) {
 
   VecPose path;
 // first add points between paths
@@ -440,7 +440,6 @@ VecPose CandidateView<T>::fusePath( VecPose &path_tmp,  VecPose &yaw_path){
 template<typename T>
 VecPose CandidateView<T>::getYawPath(const pose3D &start,
                                      const pose3D &goal) {
-                                     const float max_yaw_rate) {
   VecPose path;
   pose3D pose_tmp;
   const float max_yaw_rate =planning_config_.max_yaw_rate;
@@ -510,6 +509,18 @@ VecPose CandidateView<T>::addPathSegments(const pose3D &start_in,
   path_out.push_back(goal);
   return path_out;
 
+}
+
+template<typename T>
+void CandidateView<T>:: insertOldCandidates (VecCandidate &old_candidates){
+  for( int i =0 ; i< old_candidates.size(); i++){
+    old_candidates[i].path.clear();
+    old_candidates[i].path_length = -1.f;
+    old_candidates[i].utility = -1.f;
+    old_candidates[i].planning_solution_status = -1;
+    candidates_[i + num_sampling_] = old_candidates[i];
+  }
+  DLOG(INFO) << "cand size " << candidates_.size();
 }
 
 } // exploration
