@@ -52,11 +52,12 @@ void CandidateView<T>::getCandidateViews( const set3i &frontier_blocks_map, cons
       DLOG(INFO) << " mapsize "<< frontier_voxels_map.size();
     }
   }
-  LOG(INFO) << " mapsize "<< frontier_voxels_map.size();
-  // if (frontier_voxels_map.size() != frontier_blocks_map.size()) {
-  //   return;
-  // }
-  // random candidate view generator
+  if(frontier_voxels_map.size()==0){
+    candidates_.clear();
+    LOG(INFO)<<"No frontier voxels left. Exploration done.";
+    return;
+  }
+
   std::random_device rd;
   std::default_random_engine generator(planning_config_.random_generator_seed);
   if(planning_config_.random_generator_seed==0){
@@ -95,14 +96,7 @@ void CandidateView<T>::getCandidateViews( const set3i &frontier_blocks_map, cons
                     planning_config_.height_max + ground_height_,
                     planning_config_.height_min + ground_height_,
                     res_);
-    // DLOG(INFO) << "z "<< candidate_frontier_voxel.z();
-      // frontier_voxelblock = frontier_voxels_map[se::keyops::encode(candidate_frontier_voxel.x(),
-      //                                                              candidate_frontier_voxel.y(),
-      //                                                              candidate_frontier_voxel.z(),
-      //                                                              volume_._map_index->leaf_level(),
-      //                                                              volume_._map_index->max_level())];
 
-    // }
     bool is_free = pcc_->isSphereSkeletonFreeCand(candidate_frontier_voxel, static_cast<int>(
         planning_config_.robot_safety_radius / res_));
     if (is_free == 1) {
@@ -286,12 +280,9 @@ float CandidateView<T>::getIGWeight_tanh(const float tanh_range,
   return weight;
 }
 
-// TODO parametrize variables
-
 // information gain calculation
 // source [1] aeplanner gainCubature
-// not implemented [2]history aware aoutonomous exploration in confined environments using MAVs
-// (cylindric)
+
 
 template<typename T>
 void CandidateView<T>::calculateCandidateViewGain() {
@@ -325,6 +316,10 @@ void CandidateView<T>::calculateUtility(Candidate &candidate) {
 
   candidate.utility = candidate.information_gain / (t_yaw + t_path);
 
+  if( t_path ==0 && t_yaw < 0.001){
+    candidate.utility = 0;
+  }
+
   // LOG(INFO) << "Cand coord" << candidate.pose.p.format(InLine) << "ig "
              // << candidate.information_gain << " t_yaw " << t_yaw << " t_path " << t_path
              // << " utility " << candidate.utility;
@@ -343,16 +338,9 @@ int CandidateView<T>::getBestCandidate() {
   int best_cand_idx = 0;
   // TODO atomic counter for this
   int cand_counter = 0;
-
-  // TODO parametrize
-  const float max_yaw_rate = 0.85; // [rad/s] lee position controller rotors control
-  const float path_discount_factor = 0.3;
-  const float ig_cost = 0.2;
   float ig_sum = 0.f;
-
   // path cost = voxel *res[m/vox] / (v =1m/s) = time
 
-  // int views_to_evaluate = force_travelling ? planning_config_.num_cand_views : planning_config_.num_cand_views + 1;
 #pragma omp parallel for
   for (int i = 0; i < num_sampling_; i++) {
     if (candidates_[i].pose.p != Eigen::Vector3f(0, 0, 0)
@@ -365,14 +353,11 @@ int CandidateView<T>::getBestCandidate() {
     }
   }
   // highest utility in the beginning
-  // TODO prune invalid ones after sorting
 
   std::sort(candidates_.begin(),
             candidates_.end(),
             [](const auto &a, const auto &b) { return (a.utility > b.utility); });
-  // for(const auto& cand : candidates_){
-  //   LOG(INFO)<< " cand path length " << cand.path_length ;
-  // }
+
   ig_sum += curr_pose_.information_gain;
   calculateUtility(curr_pose_);
   if (ig_sum / cand_counter < ig_target_) {
