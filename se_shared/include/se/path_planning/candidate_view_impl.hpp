@@ -84,6 +84,7 @@ void CandidateView<T>::getCandidateViews( const set3i &frontier_blocks_map, cons
         distribution_voxel(0, frontier_voxels_map[rand_morton].size() - 1);
     // random frontier voxel inside the the randomly chosen voxel block
     int rand_voxel = distribution_voxel(generator);
+    DLOG(INFO) << " rand voxel " << rand_voxel << " size " << frontier_voxels_map[rand_morton].size();
     Eigen::Vector3i candidate_frontier_voxel = frontier_voxels_map[rand_morton].at(rand_voxel);
     boundHeight(candidate_frontier_voxel.z(),
                     planning_config_.height_max + ground_height_,
@@ -367,8 +368,7 @@ VecPose CandidateView<T>::getFinalPath(Candidate &candidate ) {
 
   VecPose path;
 // first add points between paths
-  if(candidate.path.size()>2 && planning_config_.yaw_optimization){
-    candidate.path[0]= curr_pose_.pose;
+  if(candidate.path.size()>2 ){
     for (int i = 1; i < candidate.path.size(); i++) {
 
       DLOG(INFO) << "segment start " << candidate.path[i - 1].p.format(InLine) << " end "
@@ -382,8 +382,25 @@ VecPose CandidateView<T>::getFinalPath(Candidate &candidate ) {
         path_tmp.push_back(candidate.path[i]);
       }
 
-      getViewInformationGain(candidate.path[i]);
-      VecPose yaw_path = getYawPath(candidate.path[i-1], candidate.path[i]);
+
+      VecPose yaw_path;
+      if(planning_config_.yaw_optimization || i == candidate.path.size()-1){
+        getViewInformationGain(candidate.path[i]);
+      }else{
+      // look in the flight direction
+        float x_side = (candidate.path[i].p.x() - candidate.path[i-1].p.x());
+        float y_side = (candidate.path[i].p.y() - candidate.path[i-1].p.y());
+        float angle = (float) atan2(y_side, x_side);
+        wrapYawRad(angle);
+        candidate.path[i].q = toQuaternion(angle, 0,0);
+        yaw_path = getYawPath(candidate.path[i-1], candidate.path[i]);
+      }
+
+      if(i==1){
+        yaw_path =getYawPath(pose_, candidate.path[i]);
+      }else{
+        yaw_path =getYawPath(candidate.path[i-1], candidate.path[i]);
+      }
       VecPose path_fused = fusePath(path_tmp, yaw_path);
         // push back the new path
       for(const auto& pose : path_fused){
