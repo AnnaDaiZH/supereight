@@ -333,12 +333,12 @@ int getExplorationPath(std::shared_ptr<Octree<T> > octree_ptr,
                << pose.q.vec().format(InLine);
     path.push_back(pose);
   }
-  if (candidate_view.getExplorationStatus() == 1) {
-    return 1;
-  } else {
-    return -1;
-  }
-
+  // if (candidate_view.getExplorationStatus() == 1) {
+  //   return 1;
+  // } else {
+  //   return -1;
+  // }
+  return -1;
 }
 
 } // namespace exploration
