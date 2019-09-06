@@ -126,7 +126,16 @@ bool CollisionCheckerV<FieldType>::isVoxelFree(const Eigen::Vector3i &point_v) c
       return false;
     }
 
-  } else {
+  } else if(octree_ptr_->isRoot(node)){
+    LOG(INFO) << "NODE root ";
+    return false;
+  } else if(node == nullptr && is_voxel_block){
+    LOG(INFO) << "NODE node null ptr but is block";
+    return false;
+  } else if( node == nullptr && !is_voxel_block){
+    LOG(INFO) << "NODE node null ptr but not block ";
+    return false;
+  } else{
     const unsigned int
         id = se::child_id(node->code_, octree_ptr_->leaf_level(), octree_ptr_->max_level());
     const auto &data = node->parent()->value_[id];
