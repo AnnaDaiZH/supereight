@@ -109,6 +109,7 @@ class Octree {
   /*! \brief Dimension of the voxel edge in map units.
    */
   inline float voxelDim() const { return dim_ / size_; }
+  inline bool isRoot(Node<T> *&node) const { return node == root_ ? true : false; }
 
   inline Node<T>* root() const { return root_; }
 
@@ -508,6 +509,7 @@ inline typename Octree<T>::value_type Octree<T>::get_fine(const int x,
     if (!tmp) {
       // The octree has not been allocated at the VoxelBlock (leaf) level at
       // this region. Return the initial voxel value.
+
       return init_val();
     }
     n = tmp;
