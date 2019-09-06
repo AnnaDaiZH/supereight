@@ -379,7 +379,7 @@ VecPose CandidateView<T>::getFinalPath(Candidate &candidate ) {
       DLOG(INFO) << "segment start " << candidate.path[i - 1].p.format(InLine) << " end "
       << candidate.path[i].p.format(InLine);
      VecPose path_tmp;
-      if((candidate.path[i].p -candidate.path[i - 1].p).norm() > planning_config_.max_rrt_edge_length){
+      if((candidate.path[i].p -candidate.path[i - 1].p).norm() > planning_config_.v_max*planning_config_.dt){
          path_tmp = addPathSegments(candidate.path[i-1], candidate.path[i] );
       } else{
 
@@ -415,7 +415,7 @@ VecPose CandidateView<T>::getFinalPath(Candidate &candidate ) {
   }else{
     VecPose yaw_path = getYawPath(pose_, candidate.pose );
     VecPose path_tmp;
-    if((candidate.pose.p -pose_.p).norm() > planning_config_.max_rrt_edge_length){
+    if((candidate.pose.p -pose_.p).norm() > planning_config_.v_max*planning_config_.dt){
        path_tmp = addPathSegments(pose_, candidate.pose );
     }else{
        path_tmp = candidate.path;
@@ -468,9 +468,10 @@ VecPose CandidateView<T>::getYawPath(const pose3D &start,
   wrapYawRad(yaw_diff);
   // LOG(INFO) << "[interpolateYaw] yaw diff " << yaw_diff ;
   // interpolate yaw
-  for(int i = 0; i < std::abs(yaw_diff)/max_yaw_rate ;i++){
+  float yaw_increment = (planning_config_.max_yaw_rate * planning_config_.dt)/ std::abs(yaw_diff);
+  for(float i = 0.f; i <= 1.0f ; i+= yaw_increment){
     pose_tmp = goal;
-    pose_tmp.q = start.q.slerp(i*max_yaw_rate/std::abs(yaw_diff), goal.q);
+    pose_tmp.q = start.q.slerp(i, goal.q);
     DLOG(INFO)<< "intermediate yaw "<< toEulerAngles(pose_tmp.q).yaw *180/M_PI;
     pose_tmp.q.normalize();
     path.push_back(pose_tmp);
@@ -487,7 +488,8 @@ template<typename T>
 VecPose CandidateView<T>::addPathSegments(const pose3D &start_in,
  const pose3D &goal_in) {
 
-  int sampling_dist_v = static_cast<int>(planning_config_.max_rrt_edge_length / res_);
+
+
   VecPose path_out;
   pose3D start = start_in;
   pose3D goal = goal_in;
@@ -507,8 +509,9 @@ VecPose CandidateView<T>::addPathSegments(const pose3D &start_in,
   goal.p.z() = (float)goal_h;
   path_out.push_back(start);
   float dist = (goal.p - start.p).norm();
+  float dist_increment = (planning_config_.v_max*planning_config_.dt / res_)/dist; // [voxel]
   Eigen::Vector3f dir = (goal.p - start.p).normalized();
-  for (float t = sampling_dist_v; t < dist; t += sampling_dist_v) {
+  for (float t = 0.f; t <= 1.0f; t += dist_increment) {
     Eigen::Vector3f intermediate_point = start.p + dir * t;
     pose3D tmp(intermediate_point, {1.f, 0.f, 0.f, 0.f});
     DLOG(INFO) << "intermediate_point " << intermediate_point.format(InLine);
