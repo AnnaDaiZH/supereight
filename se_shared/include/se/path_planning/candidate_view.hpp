@@ -153,7 +153,7 @@ CandidateView<T>::CandidateView(const Volume<T> &volume,
   int n_col = planning_config.fov_hor * 0.75 / planning_config.dphi;
   int n_row = planning_config.fov_hor / planning_config.dtheta;
   ig_total_ = n_col * n_row * (farPlane / step) * getEntropy(0);
-  ig_target_ = n_col * n_row * (farPlane / step) * getEntropy(log2(0.1 / (1.f - 0.1)));
+  ig_target_ = n_col * n_row * (farPlane / step) * getEntropy(log2(0.05 / (1.f - 0.05)));
   // std::cout << "ig total " << ig_total_ << " ig target " << ig_target_ << std::endl;
   candidates_.resize(num_sampling_);
   LOG(INFO) << "setup candidate view";
@@ -336,12 +336,12 @@ int getExplorationPath(std::shared_ptr<Octree<T> > octree_ptr,
                << pose.q.vec().format(InLine);
     path.push_back(pose);
   }
-  if (candidate_view.getExplorationStatus() == 1) {
-    return 1;
-  } else {
-    return -1;
-  }
-
+  // if (candidate_view.getExplorationStatus() == 1) {
+  //   return 1;
+  // } else {
+  //   return -1;
+  // }
+  return -1;
 }
 
 } // namespace exploration

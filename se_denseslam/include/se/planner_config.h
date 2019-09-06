@@ -72,11 +72,13 @@ struct Planning_Configuration {
 
   float max_yaw_rate;
 
-  float max_rrt_edge_length;
+  float v_max;
 
   bool yaw_optimization;
 
   int random_generator_seed;
+
+  float dt;
 };
 
 inline Planning_Configuration getDefaultPlanningConfig() {
@@ -85,7 +87,7 @@ inline Planning_Configuration getDefaultPlanningConfig() {
   config.robot_safety_radius = 0.5f;
   config.fov_hor = 120;
   config.dphi = 10;
-  config.dtheta = 10;
+  config.dtheta = 20;
   config.clear_sphere_for_planning = true;
   config.clearance_radius = 1.0f;
   config.height_max = 2.3f;
@@ -97,9 +99,10 @@ inline Planning_Configuration getDefaultPlanningConfig() {
   config.planner_type = kInformedRrtStar;
   config.ceiling_height = 3.0f;
   config.max_yaw_rate = 0.523;
-  config.max_rrt_edge_length = 1.0f;
+  config.v_max = 1.0f;
   config.yaw_optimization = true;
   config.random_generator_seed = 13;
+  config.dt = 0.1f;
   return config;
 }
 #endif //SUPEREIGHT_PLANNER_CONFIG_H
