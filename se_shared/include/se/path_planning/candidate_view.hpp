@@ -66,7 +66,7 @@ class CandidateView {
                 const float step,
                 const float ground_height);
 
-  void getCandidateViews(const set3i &frontier_blocks_map, const int frontier_cluster_size);
+  void getCandidateViews(set3i &frontier_blocks_map, const int frontier_cluster_size);
 
   void printFaceVoxels(const Eigen::Vector3i &voxel);
 
@@ -177,7 +177,6 @@ CandidateView<T>::CandidateView(const Volume<T> &volume,
 template<typename T>
 int getExplorationPath(std::shared_ptr<Octree<T> > octree_ptr,
                        const Volume<T> &volume,
-                       const set3i &frontier_map,
                        const float res,
                        const float step,
                        const Planning_Configuration &planning_config,
@@ -186,6 +185,7 @@ int getExplorationPath(std::shared_ptr<Octree<T> > octree_ptr,
                        const Eigen::Vector3i &lower_bound,
                        const Eigen::Vector3i &upper_bound,
                        const float ground_height,
+                       set3i &frontier_map,
                        VecPose &path,
                        VecPose &cand_views
                        ) {
@@ -206,9 +206,10 @@ int getExplorationPath(std::shared_ptr<Octree<T> > octree_ptr,
   while (candidate_view.getNumValidCandidates() < 3) {
     DLOG(INFO) << "get candidates";
     candidate_view.getCandidateViews(frontier_map, frontier_cluster_size);
+
     if (frontier_cluster_size >= 8 ) {
       frontier_cluster_size /= 2;
-    } else if(counter == 4 ){
+    } else if(counter == 20 ){
       LOG(INFO) << "no candidates ";
       path.push_back(start);
       return 1;
@@ -216,7 +217,7 @@ int getExplorationPath(std::shared_ptr<Octree<T> > octree_ptr,
     counter++;
   }
 
-
+  LOG(INFO)<< "frontier map size" << frontier_map.size();
 #pragma omp parallel for
   for (int i = 0; i < planning_config.num_cand_views; i++) {
 
@@ -336,11 +337,11 @@ int getExplorationPath(std::shared_ptr<Octree<T> > octree_ptr,
                << pose.q.vec().format(InLine);
     path.push_back(pose);
   }
-  // if (candidate_view.getExplorationStatus() == 1) {
-  //   return 1;
-  // } else {
-  //   return -1;
-  // }
+  if (candidate_view.getExplorationStatus() == 1) {
+    return 1;
+  } else {
+    return -1;
+  }
   return -1;
 }
 

@@ -537,7 +537,6 @@ int DenseSLAMSystem::planning(VecPose &path,
   float step = volume_dimension_.x() / volume_resolution_.x();
   int exploration_done =  se::exploration::getExplorationPath(discrete_vol_ptr_,
                                       volume_,
-                                      frontier_map_,
                                       res_v,
                                       step,
                                       planning_config_,
@@ -546,6 +545,7 @@ int DenseSLAMSystem::planning(VecPose &path,
                                       lower_map_bound_v_,
                                       upper_map_bound_v_,
                                       init_pose_(2),
+                                      frontier_map_,
                                       path,
                                       cand_views
                                       );

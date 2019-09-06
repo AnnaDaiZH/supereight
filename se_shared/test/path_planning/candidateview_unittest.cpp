@@ -319,7 +319,7 @@ TEST_F(CandViewUnitTest, AddSegments){
  float sampling_dist[3] = {0.4, 0.8, 1.2};
  int num_seg[3] = {13, 7, 5};
  for(int i = 0 ; i < 3 ; i ++){
-    planner_config_.max_rrt_edge_length = sampling_dist[i];
+    planner_config_.v_max = sampling_dist[i];
     se::exploration::CandidateView<OFusion>
       cand_view(volume_, planner_config_, collision_checker, dim_, config_, curr_pose, 0.1f, 12.1f);
     timings[0] = std::chrono::steady_clock::now();
@@ -329,7 +329,7 @@ TEST_F(CandViewUnitTest, AddSegments){
     (timings[1] - timings[0]).count();
 
 
-  LOG(INFO) << "samling dist " << planner_config_.max_rrt_edge_length<< " path size "<< path.size() << " progress time " << progress_time;
+  LOG(INFO) << "samling dist " << planner_config_.v_max<< " path size "<< path.size() << " progress time " << progress_time;
   EXPECT_EQ(path.size(), num_seg[i] );
 }
 }
