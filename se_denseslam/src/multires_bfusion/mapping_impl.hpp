@@ -301,7 +301,8 @@ struct multires_block_update {
                         const int f,
                         const float m,
                         set3i *updated_blocks,
-                        set3i *free_blocks)
+                        set3i *free_blocks,
+                        set3i *frontier_blocks_update)
       :
       map(octree),
       Tcw(T),
@@ -311,7 +312,8 @@ struct multires_block_update {
       depth(d),
       frame(f),
       updated_blocks_(updated_blocks),
-      free_blocks_(free_blocks) {};
+      free_blocks_(free_blocks),
+      frontier_blocks_update_(frontier_blocks_update){};
 
   const se::Octree<OFusion> &map;
   const Sophus::SE3f &Tcw;
@@ -324,6 +326,7 @@ struct multires_block_update {
 
   set3i *updated_blocks_ = new set3i;
   set3i *free_blocks_ = new set3i;
+  set3i *frontier_blocks_update_ = new set3i;
 
   void operator()(se::VoxelBlock<OFusion> *block) {
     constexpr int side = se::VoxelBlock<OFusion>::side;
@@ -381,6 +384,10 @@ struct multires_block_update {
           if (data.x > SURF_BOUNDARY) {
             data.st = voxel_state::kOccupied;
           } else if (data.x < SURF_BOUNDARY) {
+            if(data.st == voxel_state::kFrontier){
+#pragma omp critical
+              frontier_blocks_update_->insert(morton_code_child);
+            }
             data.st = voxel_state::kFree;
 #pragma omp critical
             free_blocks_->insert(morton_code_child);
@@ -521,6 +528,7 @@ void integrate(se::Octree<T> &,
                const Eigen::Vector3i &,
                set3i *,
                set3i *,
+               set3i *,
                set3i *) {
 }
 
@@ -588,7 +596,8 @@ void integrate(se::Octree<OFusion> &map,
                const Eigen::Vector3i& position,
                set3i *updated_blocks,
                set3i *free_blocks,
-               set3i *frontier_blocks) {
+               set3i *frontier_blocks,
+               set3i *frontier_blocks_update) {
   // Filter active blocks / blocks in frustum from the block buffer
   using namespace std::placeholders;
   std::vector<se::VoxelBlock<OFusion> *> active_list;
@@ -606,7 +615,7 @@ void integrate(se::Octree<OFusion> &map,
 
   // Update voxel block values
   struct multires_block_update
-      functMultires(map, Tcw, K, voxelsize, offset, depth, frame, mu, updated_blocks, free_blocks);
+      functMultires(map, Tcw, K, voxelsize, offset, depth, frame, mu, updated_blocks, free_blocks, frontier_blocks_update);
   se::functor::internal::parallel_for_each(active_list, functMultires);
   struct frontier_update functFrontier(map, frontier_blocks, ceiling_height_v, ground_height_v, position);
   se::functor::internal::parallel_for_each(active_list, functFrontier);
