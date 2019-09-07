@@ -244,7 +244,7 @@ bool isFrontier(const se::Octree<OFusion> &map,
         && (voxel.z() / BLOCK_SIDE) == (face_voxel.z() / BLOCK_SIDE)) {
       // CASE 1: same voxel block
       // std::cout << "prob " << _block->data(face_voxel).x << " state " << _block->data(face_voxel).st << std::endl; _block->data(face_voxel).x == 0.f &&
-      if (block->data(face_voxel).st == voxel_state::kUnknown)
+      if (block->data(face_voxel).x == 0.0f)
         return true;
     } else {
       // not same voxel block => check if neighbour is a voxel block
@@ -255,24 +255,26 @@ bool isFrontier(const se::Octree<OFusion> &map,
       if (is_voxel_block) {
         se::VoxelBlock<OFusion> *block = static_cast<se::VoxelBlock<OFusion> *> (node);
         // std::cout << "prob " << block->data(face_voxel).x << " state " << block->data(face_voxel).st << std::endl;
-        if (block->data(face_voxel).st == voxel_state::kUnknown)
+        if (block->data(face_voxel).x == 0.0f)
           return true;
 
         // CASE 3: not same voxelblock but belongs to a node at leaf level - 1
 
-      } else if(map.isRoot(node) && se::keyops::level(node->code_)==0){
-        continue;
-      } else {
-        // in case the neighbour node is also not in the same parent
-
-        const key_t octant = node->code_;
-        const int level = se::keyops::level(node->code_);
-        const unsigned int id = se::child_id(octant, level , map.max_level());
-        auto &data = node->parent()->value_[id];
-        if (data.st == voxel_state::kUnknown) {
-          return true;
-        }
       }
+      // else if(map.isRoot(node) && se::keyops::level(node->code_)==0){
+      //   continue;
+      // } else if (node->side_ == 2 * BLOCK_SIDE)  {
+      //   // in case the neighbour node is also not in the same parent
+
+      //   const key_t octant = node->code_;
+      //   const int level = se::keyops::level(node->code_);
+      //   const unsigned int id = se::child_id(octant, level , map.max_level());
+      //   auto &data = node->parent()->value_[id];
+      //   if (data.x ==0.0f) {
+      //     LOG(INFO) << "level " << level;
+      //     return true;
+      //   }
+      // }
     }
   }
   return false;
@@ -482,7 +484,7 @@ struct frontier_update {
             Eigen::Vector3i pix = block->coordinates() + Eigen::Vector3i(x, y, z);
             auto data = block->data(pix);
             if (data.st == voxel_state::kFree && isFrontier(map, block, pix)
-                && pix.z() > ground_height_v_ && pix.z() < ceiling_height_v_ && (pix-position_).norm() > 2.f/ map.voxelDim()) {
+                && pix.z() > ground_height_v_ && pix.z() < ceiling_height_v_ && (pix-position_).norm() > 1.2f/ map.voxelDim()) {
               frontier_blocks_->insert(morton_code_child);
               data.st = voxel_state::kFrontier;
               block->data(pix, 0, data);

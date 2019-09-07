@@ -56,7 +56,7 @@ void CandidateView<T>::getCandidateViews( set3i &frontier_blocks_map, const int 
       it = frontier_blocks_map.erase(it);
     }
   }
-  LOG(INFO) << "mapsize "<< frontier_voxels_map.size();
+  DLOG(INFO) << "mapsize "<< frontier_voxels_map.size();
   if(frontier_voxels_map.size()==0){
     candidates_.clear();
     LOG(INFO)<<"No frontier voxels left. Exploration done.";
@@ -65,7 +65,7 @@ void CandidateView<T>::getCandidateViews( set3i &frontier_blocks_map, const int 
 
   int sampling_step = std::ceil(frontier_voxels_map.size()/num_sampling_);
   if (sampling_step==0) sampling_step=1;
-  LOG(INFO)<<"sampling every " << sampling_step << "th morton code";
+  DLOG(INFO)<<"sampling every " << sampling_step << "th morton code";
 
   std::random_device rd;
   std::default_random_engine generator(planning_config_.random_generator_seed);
@@ -85,7 +85,7 @@ void CandidateView<T>::getCandidateViews( set3i &frontier_blocks_map, const int 
     std::advance(it, sampling_step);
     uint64_t rand_morton = it->first;
 
-    LOG(INFO) << " morton " << rand_morton << " coord " << keyops::decode(rand_morton).format(InLine)
+    DLOG(INFO) << " morton " << rand_morton << " coord " << keyops::decode(rand_morton).format(InLine)
     << " num frontier voxel "<< frontier_voxels_map[rand_morton].size();
     if (frontier_voxels_map[rand_morton].size() < frontier_cluster_size ||
       frontier_voxels_map[rand_morton].size() ==0) {
@@ -112,13 +112,13 @@ void CandidateView<T>::getCandidateViews( set3i &frontier_blocks_map, const int 
     if (is_free == 1) {
       candidates_[i].pose.p = candidate_frontier_voxel.cast<float>();
       num_cands_++;
-      LOG(INFO) << " free voxel ";
+      DLOG(INFO) << " free voxel ";
     } else {
-      LOG(INFO) << " not free ";
+      DLOG(INFO) << " not free ";
       candidates_[i].pose.p = Eigen::Vector3f(0, 0, 0);
     }
     // candidates_[i].pose.p = candidate_frontier_voxel.cast<float>();
-    LOG(INFO) << "Cand voxel " << candidate_frontier_voxel.format(InLine);
+    DLOG(INFO) << "Cand voxel " << candidate_frontier_voxel.format(InLine);
   }
   return;
 }
