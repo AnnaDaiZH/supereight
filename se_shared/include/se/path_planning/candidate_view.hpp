@@ -207,9 +207,10 @@ int getExplorationPath(std::shared_ptr<Octree<T> > octree_ptr,
     DLOG(INFO) << "get candidates";
     candidate_view.getCandidateViews(frontier_map, frontier_cluster_size);
 
-    if (frontier_cluster_size >= 8 ) {
-      frontier_cluster_size /= 2;
-    } else if(counter == 20 ){
+    // if (frontier_cluster_size >= 8 ) {
+    //   frontier_cluster_size /= 2;
+    // } else
+    if(counter == 20 ){
       LOG(INFO) << "no candidates ";
       path.push_back(start);
       return 1;

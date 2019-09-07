@@ -261,20 +261,20 @@ bool isFrontier(const se::Octree<OFusion> &map,
         // CASE 3: not same voxelblock but belongs to a node at leaf level - 1
 
       }
-      // else if(map.isRoot(node) && se::keyops::level(node->code_)==0){
-      //   continue;
-      // } else if (node->side_ == 2 * BLOCK_SIDE)  {
-      //   // in case the neighbour node is also not in the same parent
+      else if(map.isRoot(node) && se::keyops::level(node->code_)==0){
+        continue;
+      } else if (node->side_ == 2 * BLOCK_SIDE)  {
+        // in case the neighbour node is also not in the same parent
 
-      //   const key_t octant = node->code_;
-      //   const int level = se::keyops::level(node->code_);
-      //   const unsigned int id = se::child_id(octant, level , map.max_level());
-      //   auto &data = node->parent()->value_[id];
-      //   if (data.x ==0.0f) {
-      //     LOG(INFO) << "level " << level;
-      //     return true;
-      //   }
-      // }
+        const key_t octant = node->code_;
+        const int level = se::keyops::level(node->code_);
+        const unsigned int id = se::child_id(octant, level , map.max_level());
+        auto &data = node->parent()->value_[id];
+        if (data.x ==0.0f) {
+          DLOG(INFO) << "level " << level;
+          return true;
+        }
+      }
     }
   }
   return false;
@@ -616,6 +616,7 @@ void integrate(se::Octree<OFusion> &map,
   // Update voxel block values
   struct multires_block_update
       functMultires(map, Tcw, K, voxelsize, offset, depth, frame, mu, updated_blocks, free_blocks, frontier_blocks_update);
+
   se::functor::internal::parallel_for_each(active_list, functMultires);
   struct frontier_update functFrontier(map, frontier_blocks, ceiling_height_v, ground_height_v, position);
   se::functor::internal::parallel_for_each(active_list, functFrontier);

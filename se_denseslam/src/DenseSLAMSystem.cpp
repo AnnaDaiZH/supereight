@@ -482,9 +482,9 @@ bool DenseSLAMSystem::integration(const Eigen::Vector4f &k,
       const int ground_height_v = (init_pose_(2)+ planning_config_.height_min)/discrete_vol_ptr_->voxelDim();
       Eigen::Vector3i position = (pose_.block<3,1>(0,3)/ voxelsize).cast<int>();
 
-      set3i frontier_blocks_update;
+      set3i* frontier_blocks_update = new set3i;
       se::multires::ofusion::integrate(*volume_._map_index, Tcw, K, voxelsize, Eigen::Vector3f::Constant(0.5),
-                                       float_depth_, mu, frame, ceiling_height_v, ground_height_v, updated_blocks,free_blocks,
+                                       float_depth_, mu, frame, ceiling_height_v, ground_height_v, position, updated_blocks, free_blocks,
                                        frontier_blocks, frontier_blocks_update);
 
 
