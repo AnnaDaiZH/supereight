@@ -96,6 +96,7 @@ class CandidateView {
   int getExplorationStatus() const { return exploration_status_; }
 
   float getTargetIG() const { return ig_target_; }
+  float getTotalIG() const {return ig_total_; }
   int getNumValidCandidates() const { return num_cands_; }
 
   VecCandidate candidates_;
@@ -195,7 +196,7 @@ int getExplorationPath(std::shared_ptr<Octree<T> > octree_ptr,
   auto collision_checker_v = aligned_shared<CollisionCheckerV<T> >(octree_ptr, planning_config);
   // auto path_planner_ompl_ptr =
   // aligned_shared<PathPlannerOmpl<T> >(octree_ptr, collision_checker_v, planning_config);
-  LOG(INFO) << "frontier map size " << frontier_map.size();
+  DLOG(INFO) << "frontier map size " << frontier_map.size();
   // Candidate view generation
   CandidateView<T> candidate_view
       (volume, planning_config, collision_checker_v, res, config, pose, step, ground_height);
@@ -217,7 +218,7 @@ int getExplorationPath(std::shared_ptr<Octree<T> > octree_ptr,
     counter++;
   }
 
-  LOG(INFO)<< "frontier map size" << frontier_map.size();
+  DLOG(INFO)<< "frontier map size" << frontier_map.size();
 #pragma omp parallel for
   for (int i = 0; i < planning_config.num_cand_views; i++) {
 
@@ -243,7 +244,7 @@ int getExplorationPath(std::shared_ptr<Octree<T> > octree_ptr,
         robot_safety_radius = planning_config.robot_safety_radius;
         for(;robot_safety_radius>=0.3f ; robot_safety_radius-=0.2f){
           planning_config_tmp.robot_safety_radius = robot_safety_radius;
-          LOG(INFO) << "robot_safety_radius "<< planning_config_tmp.robot_safety_radius;
+          DLOG(INFO) << "robot_safety_radius "<< planning_config_tmp.robot_safety_radius;
           path_planner_ompl_ptr = aligned_shared<PathPlannerOmpl<T> >(octree_ptr,
                                                                        collision_checker,
                                                                        planning_config_tmp,
@@ -256,7 +257,7 @@ int getExplorationPath(std::shared_ptr<Octree<T> > octree_ptr,
                                                              int>());
           candidate_view.candidates_[i].planning_solution_status = path_planned;
           if(path_planned >0){
-            LOG(INFO) << "found a path for cand " << i;
+            LOG(INFO) << "Found a path for cand " << i;
             break;
           }else{
             candidate_view.candidates_[i].path_length = (start.p - candidate_view.candidates_[i].pose.p).squaredNorm();
@@ -271,7 +272,7 @@ int getExplorationPath(std::shared_ptr<Octree<T> > octree_ptr,
 
        if(path_planned>0) {
         // path_length[i] = path_planner_ompl_ptr->getPathLength();
-        LOG(INFO)<<" robot_safety_radius " << robot_safety_radius << " cand " << i ;
+        DLOG(INFO)<<" robot_safety_radius " << robot_safety_radius << " cand " << i ;
         valid_path = true;
         candidate_view.candidates_[i].path_length = path_planner_ompl_ptr->getPathLength();
 
@@ -297,10 +298,10 @@ int getExplorationPath(std::shared_ptr<Octree<T> > octree_ptr,
 
   int best_cand_idx = -1;
   bool use_curr_pose = true;
-  bool force_travelling = candidate_view.curr_pose_.information_gain < candidate_view.getTargetIG();
+  bool force_travelling = candidate_view.curr_pose_.information_gain < candidate_view.getTotalIG()*0.2;
   if (valid_path) {
     best_cand_idx = candidate_view.getBestCandidate();
-    LOG(INFO) << "[se/candview] best candidate is "
+    DLOG(INFO) << "[se/candview] best candidate is "
               << (candidate_view.candidates_[best_cand_idx].pose.p * res).format(InLine);
     // std::cout << " path length of best cand "
     //           << candidate_view.candidates_[best_cand_idx].path.size() << std::endl;
@@ -337,11 +338,11 @@ int getExplorationPath(std::shared_ptr<Octree<T> > octree_ptr,
                << pose.q.vec().format(InLine);
     path.push_back(pose);
   }
-  if (candidate_view.getExplorationStatus() == 1) {
-    return 1;
-  } else {
-    return -1;
-  }
+  // if (candidate_view.getExplorationStatus() == 1) {
+  //   return 1;
+  // } else {
+  //   return -1;
+  // }
   return -1;
 }
 
