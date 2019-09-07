@@ -63,6 +63,10 @@ void CandidateView<T>::getCandidateViews( set3i &frontier_blocks_map, const int 
     return;
   }
 
+  int sampling_step = std::ceil(frontier_voxels_map.size()/num_sampling_);
+  if (sampling_step==0) sampling_step=1;
+  LOG(INFO)<<"sampling every " << sampling_step << "th morton code";
+
   std::random_device rd;
   std::default_random_engine generator(planning_config_.random_generator_seed);
   if(planning_config_.random_generator_seed==0){
@@ -71,17 +75,22 @@ void CandidateView<T>::getCandidateViews( set3i &frontier_blocks_map, const int 
   }
 
   std::uniform_int_distribution<int> distribution_block(0, frontier_voxels_map.size() - 1);
-
+  auto it = frontier_voxels_map.begin();
 #pragma omp parallel for
   for (int i = 0; i < num_sampling_; i++) {
-    auto it = frontier_voxels_map.begin();
-    const int rand_num = distribution_block(generator);
 
-    std::advance(it, rand_num);
+
+    // const int rand_num = distribution_block(generator);
+
+    std::advance(it, sampling_step);
     uint64_t rand_morton = it->first;
 
+    LOG(INFO) << " morton " << rand_morton << " coord " << keyops::decode(rand_morton).format(InLine)
+    << " num frontier voxel "<< frontier_voxels_map[rand_morton].size();
     if (frontier_voxels_map[rand_morton].size() < frontier_cluster_size ||
       frontier_voxels_map[rand_morton].size() ==0) {
+      DLOG(INFO) << " size "<< frontier_voxels_map[rand_morton].size()  << " "<<frontier_cluster_size;
+
       continue;
     }
 
@@ -511,7 +520,7 @@ VecPose CandidateView<T>::addPathSegments(const pose3D &start_in,
   float dist_increment = (planning_config_.v_max*planning_config_.dt / res_)/dist; // [voxel]
   Eigen::Vector3f dir = (goal.p - start.p).normalized();
   for (float t = 0.f; t <= 1.0f; t += dist_increment) {
-    Eigen::Vector3f intermediate_point = start.p + dir * t;
+    Eigen::Vector3f intermediate_point = start.p + dir * t*dist;
     pose3D tmp(intermediate_point, {1.f, 0.f, 0.f, 0.f});
     DLOG(INFO) << "intermediate_point " << intermediate_point.format(InLine);
     path_out.push_back(tmp);
