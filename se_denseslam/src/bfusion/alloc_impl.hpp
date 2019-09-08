@@ -44,11 +44,11 @@
 static inline float compute_stepsize(const float dist_travelled,
                                      const float band,
                                      const float voxel_size) {
-  float new_stepsize ;
+  float new_stepsize = voxel_size ;
   float half = band * 0.5f;
-  if (dist_travelled < band) {
+  if (dist_travelled < band*4) {
     new_stepsize = voxel_size;
-  } else if (dist_travelled < band + half) {
+  } else if (dist_travelled < band*6) {
     new_stepsize = 10.f * voxel_size;
   } else {
     new_stepsize = 30.f * voxel_size;
@@ -138,7 +138,7 @@ size_t buildOctantList(HashType*              allocation_list,
             (y + 0.5f) * depth, depth).homogeneous()).head<3>();
       // get stepping direction
       Eigen::Vector3f direction = (camera_pos - world_vertex).normalized();
-      const float sigma = se::math::clamp(noise_factor * se::math::sq(depth), voxel_size*0.5f, voxel_size*0.75f);
+      const float sigma = se::math::clamp(noise_factor * se::math::sq(depth), 0.1f, 0.2f);
       const float band = 2 * sigma;
       // begin the allocation behind the projected 3D point/ max dist from camera
       const Eigen::Vector3f origin = world_vertex - (band * 0.5f) * direction;

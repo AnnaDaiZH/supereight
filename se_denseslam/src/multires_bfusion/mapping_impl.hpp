@@ -261,20 +261,20 @@ bool isFrontier(const se::Octree<OFusion> &map,
         // CASE 3: not same voxelblock but belongs to a node at leaf level - 1
 
       }
-      else if(map.isRoot(node) && se::keyops::level(node->code_)==0){
-        continue;
-      } else if (node->side_ == 2 * BLOCK_SIDE)  {
-        // in case the neighbour node is also not in the same parent
+      // else if(map.isRoot(node) && se::keyops::level(node->code_)==0){
+      //   continue;
+      // } else if (node->side_ == 2 * BLOCK_SIDE)  {
+      //   // in case the neighbour node is also not in the same parent
 
-        const key_t octant = node->code_;
-        const int level = se::keyops::level(node->code_);
-        const unsigned int id = se::child_id(octant, level , map.max_level());
-        auto &data = node->parent()->value_[id];
-        if (data.x ==0.0f) {
-          DLOG(INFO) << "level " << level;
-          return true;
-        }
-      }
+      //   const key_t octant = node->code_;
+      //   const int level = se::keyops::level(node->code_);
+      //   const unsigned int id = se::child_id(octant, level , map.max_level());
+      //   auto &data = node->parent()->value_[id];
+      //   if (data.x ==0.0f) {
+      //     DLOG(INFO) << "level " << level;
+      //     return true;
+      //   }
+      // }
     }
   }
   return false;
@@ -363,7 +363,7 @@ struct multires_block_update {
           // Compute the occupancy probability for the current measurement.
           const float diff = (pos.z() - depthSample);
           float sigma =
-              se::math::clamp(mu * se::math::sq(pos.z()), 0.5f * voxel_size, 0.75f * voxel_size);
+              se::math::clamp(mu * se::math::sq(pos.z()), 0.1f , 0.2f);
           float sample = H(diff / sigma, pos.z());
           if (sample == 0.5f)
             continue;
