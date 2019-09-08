@@ -71,7 +71,7 @@ void CandidateView<T>::getCandidateViews( set3i &frontier_blocks_map, const int 
   std::random_device rd;
   std::default_random_engine generator(planning_config_.random_generator_seed);
   if(planning_config_.random_generator_seed==0){
-    LOG(INFO)<<"using rand";
+    // LOG(INFO)<<"using rand"
     std::default_random_engine generator(rd());
   }
 

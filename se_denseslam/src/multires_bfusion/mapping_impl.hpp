@@ -363,7 +363,7 @@ struct multires_block_update {
           // Compute the occupancy probability for the current measurement.
           const float diff = (pos.z() - depthSample);
           float sigma =
-              se::math::clamp(mu * se::math::sq(pos.z()), 0.1f , 0.2f);
+              se::math::clamp(mu * se::math::sq(pos.z()), 0.1f , 0.15f);
           float sample = H(diff / sigma, pos.z());
           if (sample == 0.5f)
             continue;
