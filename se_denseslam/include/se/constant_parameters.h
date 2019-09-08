@@ -24,7 +24,7 @@ const float maxweight = 100.0f;
 /**
  * TODO
  */
-const float nearPlane = 0.1f;
+const float nearPlane = 0.02f;
 
 /**
  * TODO
