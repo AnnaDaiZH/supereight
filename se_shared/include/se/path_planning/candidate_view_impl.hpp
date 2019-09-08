@@ -57,6 +57,7 @@ void CandidateView<T>::getCandidateViews( set3i &frontier_blocks_map, const int 
     //   it = frontier_blocks_map.erase(it);
     // }
   }
+  LOG(INFO) << "frontier map size: "<< frontier_voxels_map.size();
 
   if(frontier_voxels_map.size()==0){
     candidates_.clear();
