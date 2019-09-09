@@ -134,6 +134,7 @@ static inline void getFreeMapBounds(const std::shared_ptr<se::Octree<T> > octree
     --it_end;
     upper_bound_morton = *it_end;
     upper_bound_tmp = se::keyops::decode(upper_bound_morton);
+    upper_bound_tmp += Eigen::Vector3i(8,8,8);
     octree_ptr_->fetch_octant(upper_bound_tmp(0), upper_bound_tmp(1), upper_bound_tmp(2), node, is_block);
     valid_upper = is_block;
     // std::cout << "upper " << upper_bound_tmp.format(InLine) << " lower "<< lower_bound_tmp.format(InLine)

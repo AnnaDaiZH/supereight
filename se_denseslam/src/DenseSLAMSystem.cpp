@@ -531,17 +531,16 @@ int DenseSLAMSystem::planning(VecPose &path,
     insertBlocksToMap(free_map_, free_blocks);
     init_position_cleared_ = true;
     // LOG(INFO) << "Planning free_map_  size  " << free_map_.size();
-    if(map_size_before != free_map_.size()){
+    // if(map_size_before != free_map_.size()){
       getFreeMapBounds(discrete_vol_ptr_, free_map_, lower_map_bound_v_, upper_map_bound_v_);
       // std::cout << "map bounds " << lower_map_bound_v_ << " " << upper_map_bound_v_;
-    }
+    // }
 
   float res_v = volume_dimension_.cast<float>().x() / volume_resolution_.cast<float>().x();
 
 
   float step = volume_dimension_.x() / volume_resolution_.x();
   int exploration_done =  se::exploration::getExplorationPath(discrete_vol_ptr_,
-                                      volume_,
                                       res_v,
                                       step,
                                       planning_config_,

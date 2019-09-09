@@ -24,7 +24,7 @@ void CandidateView<T>::printFaceVoxels(const Eigen::Vector3i &_voxel) {
   face_neighbour_voxel[5] << _voxel.x(), _voxel.y(), _voxel.z() + 1;
   std::cout << "[se/cand view] face voxel states ";
   for (const auto &face_voxel : face_neighbour_voxel) {
-    std::cout << volume_._map_get->get(face_voxel).st << " ";
+    std::cout << octree_ptr_->get(face_voxel).st << " ";
   }
   std::cout << std::endl;
 
@@ -40,7 +40,7 @@ template<typename T>
 void CandidateView<T>::getCandidateViews( set3i &frontier_blocks_map, const int frontier_cluster_size) {
 
   mapvec3i frontier_voxels_map;
-  node_iterator<T> node_it(*(volume_._map_index));
+  node_iterator<T> node_it(*octree_ptr_);
 
   // get all frontier voxels inside a voxel block
 
@@ -57,7 +57,7 @@ void CandidateView<T>::getCandidateViews( set3i &frontier_blocks_map, const int 
     //   it = frontier_blocks_map.erase(it);
     // }
   }
-  LOG(INFO) << "frontier map size: "<< frontier_voxels_map.size();
+  DLOG(INFO) << "frontier map size: "<< frontier_voxels_map.size();
 
   if(frontier_voxels_map.size()==0){
     candidates_.clear();
@@ -164,7 +164,7 @@ float CandidateView<T>::getViewInformationGain(pose3D &pose) {
       vec[2] = cand_view_m[2] + r_max * cos(phi_rad);
       dir = (vec - cand_view_m).normalized();
       // initialize ray
-      se::ray_iterator<T> ray(*volume_._map_index, cand_view_m, dir, nearPlane, farPlane);
+      se::ray_iterator<T> ray(*octree_ptr_, cand_view_m, dir, nearPlane, farPlane);
       ray.next();
       // lower bound dist from camera
       const float t_min = ray.tcmin(); /* Get distance to the first intersected block */
@@ -222,13 +222,12 @@ float CandidateView<T>::getViewInformationGain(pose3D &pose) {
 
 /**
  * march along the ray until max sensor depth or a surface is hit to calculate the entropy reduction
- * TODO add weight for unknown voxels
- * @param volume
+ *
  * @param origin cand view [m]
  * @param direction [m]
  * @param tnear
  * @param tfar max sensor depth
- * @param step
+ * @param origin
  * @return
  */
 template<typename T>
@@ -236,22 +235,23 @@ std::pair<float, float> CandidateView<T>::getRayInformationGain(const Eigen::Vec
                                                                 const float tnear,
                                                                 const float tfar,
                                                                 const Eigen::Vector3f &origin) {
-  auto select_occupancy = [](typename Volume<T>::value_type val) { return val.x; };
+  auto select_occupancy = [](typename VoxelBlock<T>::value_type val) { return val.x; };
   // march from camera away
   float ig_entropy = 0.0f;
   float t = tnear; // closer bound to camera
   if (tnear < tfar) {
 
     // occupancy prob in log2
-    float prob_log = volume_.interp(origin + direction * t, select_occupancy);
+    float prob_log = octree_ptr_->interp(origin + direction * t, select_occupancy);
     float weight = 1.0f;
     // check if current pos is free
     if (prob_log <= SURF_BOUNDARY + occ_thresh_) {
       ig_entropy = weight * getEntropy(prob_log);
       for (; t < tfar; t += step_) {
         const Eigen::Vector3f pos = origin + direction * t;
-        typename Volume<T>::value_type data = volume_.get(pos);
-        prob_log = volume_.interp(origin + direction * t, select_occupancy);
+        const Eigen::Vector3i pos_v = (pos/res_).cast<int>();
+        const auto  data = octree_ptr_->get(pos_v);
+        prob_log = octree_ptr_->interp(pos_v.cast<float>(), select_occupancy);
         ig_entropy += getEntropy(prob_log);
 
 // next step along the ray hits a surface with a secure threshold return

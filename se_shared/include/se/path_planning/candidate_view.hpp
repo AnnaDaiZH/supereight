@@ -27,7 +27,6 @@
 #include <Eigen/StdVector>
 
 #include "se/geometry/octree_collision.hpp"
-#include "se/continuous/volume_template.hpp"
 #include "se/octree.hpp"
 #include "se/node_iterator.hpp"
 #include "se/constant_parameters.h"
@@ -39,7 +38,7 @@
 
 #include "se/path_planner_ompl.hpp"
 
-template<typename T> using Volume = VolumeTemplate<T, se::Octree>;
+
 //typedef SE_FIELD_TYPE FieldType;
 namespace se {
 
@@ -57,7 +56,7 @@ class CandidateView {
  public:
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
   typedef std::shared_ptr<CandidateView> SPtr;
-  CandidateView(const Volume<T> &volume,
+  CandidateView(const std::shared_ptr<Octree<T> > octree_ptr,
                 const Planning_Configuration &planning_config,
                 const std::shared_ptr<CollisionCheckerV<T> > pcc,
                 const float res,
@@ -104,7 +103,6 @@ class CandidateView {
  private:
   pose3D pose_;
   VecVec3i cand_views_;
-  Volume<T> volume_;
 
   float res_; // [m/vx]
   Planning_Configuration planning_config_;
@@ -122,10 +120,11 @@ class CandidateView {
   int num_cands_;
 
   std::shared_ptr<CollisionCheckerV<T> > pcc_ = nullptr;
+  std::shared_ptr<Octree<T> > octree_ptr_ = nullptr;
 };
 
 template<typename T>
-CandidateView<T>::CandidateView(const Volume<T> &volume,
+CandidateView<T>::CandidateView(const std::shared_ptr<Octree<T> > octree_ptr,
                                 const Planning_Configuration &planning_config,
                                 const std::shared_ptr<CollisionCheckerV<T> > pcc,
                                 const float res,
@@ -134,7 +133,7 @@ CandidateView<T>::CandidateView(const Volume<T> &volume,
                                 const float step,
                                 const float ground_height)
     :
-    volume_(volume),
+    octree_ptr_(octree_ptr),
     planning_config_(planning_config),
     res_(res),
     config_(config),
@@ -177,7 +176,6 @@ CandidateView<T>::CandidateView(const Volume<T> &volume,
  */
 template<typename T>
 int getExplorationPath(std::shared_ptr<Octree<T> > octree_ptr,
-                       const Volume<T> &volume,
                        const float res,
                        const float step,
                        const Planning_Configuration &planning_config,
@@ -195,10 +193,10 @@ int getExplorationPath(std::shared_ptr<Octree<T> > octree_ptr,
   bool valid_path = false;
   auto collision_checker_v = aligned_shared<CollisionCheckerV<T> >(octree_ptr, planning_config);
 
-  DLOG(INFO) << "frontier map size " << frontier_map.size();
+  LOG(INFO) << "frontier map size " << frontier_map.size();
   // Candidate view generation
   CandidateView<T> candidate_view
-      (volume, planning_config, collision_checker_v, res, config, pose, step, ground_height);
+      (octree_ptr, planning_config, collision_checker_v, res, config, pose, step, ground_height);
 
   int frontier_cluster_size = planning_config.frontier_cluster_size;
   int counter = 0;
