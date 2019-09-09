@@ -67,9 +67,7 @@ end
 % Get the path to the program used to evaluate maps.
 [script_dir, ~, ~] = fileparts(program_invocation_name());
 voxelcounter_program = [script_dir ...
-    '/../../build/Release/se_apps/se-denseslam-ofusion-voxelcounter'];
-mapcropper_program = [script_dir ...
-    '/../../build/Release/se_apps/se-denseslam-ofusion-mapcropper'];
+    '/../../build/Release/se_apps/se-denseslam-ofusion-compute-volume'];
 addpath(genpath([script_dir '/octave_functions']));
 
 % Get the command line arguments.
@@ -105,23 +103,14 @@ for i = 1:length(filenames);
 
   % This is a map, process.
   if strfind(filename, '.bin')
-    % Crop the octree.
-    [status, output] = system([mapcropper_program ' ' filename ' ' ...
-        num2str(dim_x) ' ' num2str(dim_y) ' ' num2str(dim_z)]);
-  if status ~= 0
-    fprintf('Error from %s\n', mapcropper_program);
-    fprintf('%s', output);
-    continue;
-  end
-
     % Evaluate the file.
-    filename_cropped = strrep(filename, '.bin', '_cropped.bin');
-    [status, output] = system([voxelcounter_program ' ' filename_cropped]);
-  if status ~= 0
-    fprintf('Error from %s\n', voxelcounter_program);
-    fprintf('%s', output);
-    continue;
-  end
+    [status, output] = system([voxelcounter_program ' ' filename ' ' ...
+        num2str(dim_x) ' ' num2str(dim_y) ' ' num2str(dim_z)]);
+	if status ~= 0
+		fprintf('Error from %s\n', voxelcounter_program);
+		fprintf('%s', output);
+		continue;
+	end
 
     % Parse the output.
     output_lines = strsplit(output, '\n');
