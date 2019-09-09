@@ -49,6 +49,16 @@ function(add_version lib_name libraries)
   target_include_directories(${lib_name}-mapcropper PUBLIC
     include)
 
+#  ------ COMPUTE_VOLUME --------
+  add_executable(${lib_name}-compute-volume
+  src/compute_volume.cpp
+  )
+  target_link_libraries(${lib_name}-compute-volume
+    ${lib_name}
+    ${main_common_libraries})
+  target_include_directories(${lib_name}-compute-volume PUBLIC
+    include)
+
   #  ------ BENCHMARK --------
   add_executable(${lib_name}-benchmark
     src/benchmark.cpp
