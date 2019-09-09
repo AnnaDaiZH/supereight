@@ -138,7 +138,7 @@ size_t buildOctantList(HashType*              allocation_list,
             (y + 0.5f) * depth, depth).homogeneous()).head<3>();
       // get stepping direction
       Eigen::Vector3f direction = (camera_pos - world_vertex).normalized();
-      const float sigma = se::math::clamp(noise_factor * se::math::sq(depth), 0.15f, 0.25f);
+      const float sigma = se::math::clamp(noise_factor * se::math::sq(depth), 0.08f, 0.2f);
       const float band = 2 * sigma;
       // begin the allocation behind the projected 3D point/ max dist from camera
       const Eigen::Vector3f origin = world_vertex - (band * 0.5f) * direction;

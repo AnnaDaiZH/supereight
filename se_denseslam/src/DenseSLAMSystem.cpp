@@ -479,7 +479,7 @@ bool DenseSLAMSystem::integration(const Eigen::Vector4f &k,
                                   Eigen::Vector2i(computation_size_.x(), computation_size_.y()),
                                   funct);
       const int ceiling_height_v = (init_pose_(2)+ planning_config_.ceiling_height)/discrete_vol_ptr_->voxelDim();
-      const int ground_height_v = (init_pose_(2)+ planning_config_.height_min)/discrete_vol_ptr_->voxelDim();
+      const int ground_height_v = (init_pose_(2)+ 0.2f)/discrete_vol_ptr_->voxelDim();
       Eigen::Vector3i position = (pose_.block<3,1>(0,3)/ voxelsize).cast<int>();
 
       set3i* frontier_blocks_update = new set3i;

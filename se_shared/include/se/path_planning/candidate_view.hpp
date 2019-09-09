@@ -194,8 +194,7 @@ int getExplorationPath(std::shared_ptr<Octree<T> > octree_ptr,
   pose3D start = getCurrPose(pose, res);
   bool valid_path = false;
   auto collision_checker_v = aligned_shared<CollisionCheckerV<T> >(octree_ptr, planning_config);
-  // auto path_planner_ompl_ptr =
-  // aligned_shared<PathPlannerOmpl<T> >(octree_ptr, collision_checker_v, planning_config);
+
   DLOG(INFO) << "frontier map size " << frontier_map.size();
   // Candidate view generation
   CandidateView<T> candidate_view
@@ -207,13 +206,10 @@ int getExplorationPath(std::shared_ptr<Octree<T> > octree_ptr,
     DLOG(INFO) << "get candidates";
     candidate_view.getCandidateViews(frontier_map, frontier_cluster_size);
 
-    // if (frontier_cluster_size >= 8 ) {
-    //   frontier_cluster_size /= 2;
-    // } else
     if(counter == 20 ){
       LOG(INFO) << "no candidates ";
       path.push_back(start);
-      // return 1;
+
       break;
     }
     counter++;
@@ -313,9 +309,6 @@ int getExplorationPath(std::shared_ptr<Octree<T> > octree_ptr,
               << " curr pose utility " << candidate_view.curr_pose_.utility;
 
   }
-  // }
-  // TODO make this nicer
-
 
   VecPose path_tmp;
   if (valid_path && (!use_curr_pose || force_travelling)) {
@@ -339,12 +332,12 @@ int getExplorationPath(std::shared_ptr<Octree<T> > octree_ptr,
                << pose.q.vec().format(InLine);
     path.push_back(pose);
   }
-  // if (candidate_view.getExplorationStatus() == 1) {
-  //   return 1;
-  // } else {
-  //   return -1;
-  // }
-  return -1;
+  if (candidate_view.getExplorationStatus() == 1) {
+    return 1;
+  } else {
+    return -1;
+  }
+
 }
 
 } // namespace exploration

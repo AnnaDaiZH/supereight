@@ -107,15 +107,17 @@ void CandidateView<T>::getCandidateViews( set3i &frontier_blocks_map, const int 
                     planning_config_.height_min + ground_height_,
                     res_);
 
-    bool is_free = pcc_->isSphereSkeletonFreeCand(candidate_frontier_voxel, static_cast<int>(
-        planning_config_.robot_safety_radius_min / res_));
-    if (is_free == 1) {
-      candidates_[i].pose.p = candidate_frontier_voxel.cast<float>();
-      num_cands_++;
-    } else {
-      candidates_[i].pose.p = Eigen::Vector3f(0, 0, 0);
-    }
-
+    // bool is_free = pcc_->isSphereSkeletonFreeCand(candidate_frontier_voxel, static_cast<int>(
+    //     0.25f/ res_));
+    // if (is_free == 1) {
+    //   candidates_[i].pose.p = candidate_frontier_voxel.cast<float>();
+    //   num_cands_++;
+    //   DLOG(INFO) << " free voxel ";
+    // } else {
+    //   DLOG(INFO) << " not free ";
+    //   candidates_[i].pose.p = Eigen::Vector3f(0, 0, 0);
+    // }
+    candidates_[i].pose.p = candidate_frontier_voxel.cast<float>();
     DLOG(INFO) << "Cand voxel " << candidate_frontier_voxel.format(InLine);
   }
   return;
