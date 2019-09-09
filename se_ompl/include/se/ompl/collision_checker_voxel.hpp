@@ -94,7 +94,7 @@ const Planning_Configuration &planning_config
 :
 octree_ptr_ (octree_ptr), planning_params_(planning_config) {
   voxel_dim_ = octree_ptr->voxelDim();
-  node_level_ = getNodeLevel(std::ceil(planning_params_.robot_safety_radius_min / voxel_dim_) * 2);
+  node_level_ = getNodeLevel(std::ceil(planning_params_.robot_safety_radius / voxel_dim_) * 2);
 
   DLOG(INFO) << "Collision Checker V setup";
   DLOG(INFO) << "node level " << node_level_;

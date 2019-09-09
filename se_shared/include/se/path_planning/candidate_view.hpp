@@ -235,9 +235,8 @@ int getExplorationPath(std::shared_ptr<Octree<T> > octree_ptr,
 
 
       if (path_planned < 0 ) {
-        robot_safety_radius_tmp = planning_config.robot_safety_radius_max;
         Planning_Configuration planning_config_tmp = planning_config;
-        robot_safety_radius = planning_config.robot_safety_radius;
+        float robot_safety_radius = planning_config.robot_safety_radius;
         for(;robot_safety_radius>=0.3f ; robot_safety_radius-=0.2f){
           planning_config_tmp.robot_safety_radius = robot_safety_radius;
           DLOG(INFO) << "robot_safety_radius "<< planning_config_tmp.robot_safety_radius;

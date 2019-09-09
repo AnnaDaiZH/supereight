@@ -339,7 +339,7 @@ void CandidateView<T>::calculateUtility(Candidate &candidate) {
   wrapYawRad(yaw_diff);
   float t_yaw = fabs(yaw_diff / max_yaw_rate);
 
-  candidate.utility = candidate.information_gain / (t_yaw + t_path*planning_config_.path_cost);
+  candidate.utility = candidate.information_gain / (t_yaw + t_path);
 
   if( t_path ==0 && t_yaw < 0.001){
     candidate.utility = 0;
