@@ -150,7 +150,7 @@ CandidateView<T>::CandidateView(const std::shared_ptr<Octree<T> > octree_ptr,
   curr_pose_.path.push_back(curr_pose_.pose);
   curr_pose_.path_length = 0.f;
   pose_ = curr_pose_.pose;
-  int n_col = planning_config.fov_hor * 0.75 / planning_config.dphi;
+  int n_col = planning_config.fov_vert / planning_config.dphi;
   int n_row = planning_config.fov_hor / planning_config.dtheta;
   ig_total_ = n_col * n_row * (farPlane / step) * getEntropy(0);
   ig_target_ = n_col * n_row * (farPlane / step) * getEntropy(log2(0.05 / (1.f - 0.05)));
@@ -200,14 +200,12 @@ int getExplorationPath(std::shared_ptr<Octree<T> > octree_ptr,
 
   int frontier_cluster_size = planning_config.frontier_cluster_size;
   int counter = 0;
-  while (candidate_view.getNumValidCandidates() ==0) {
+  while (candidate_view.getNumValidCandidates() ==0 && frontier_map.size() != 0) {
     DLOG(INFO) << "get candidates";
     candidate_view.getCandidateViews(frontier_map, frontier_cluster_size);
 
     if(counter == 20 ){
       LOG(INFO) << "no candidates ";
-      path.push_back(start);
-
       break;
     }
     counter++;
@@ -330,7 +328,7 @@ int getExplorationPath(std::shared_ptr<Octree<T> > octree_ptr,
                << pose.q.vec().format(InLine);
     path.push_back(pose);
   }
-  if (candidate_view.getExplorationStatus() == 1) {
+  if (candidate_view.getExplorationStatus() == 1 || frontier_map.size() == 0) {
     return 1;
   } else {
     return -1;

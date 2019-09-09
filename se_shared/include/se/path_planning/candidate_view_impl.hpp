@@ -118,6 +118,7 @@ void CandidateView<T>::getCandidateViews( set3i &frontier_blocks_map, const int 
     //   candidates_[i].pose.p = Eigen::Vector3f(0, 0, 0);
     // }
     candidates_[i].pose.p = candidate_frontier_voxel.cast<float>();
+    num_cands_++;
     DLOG(INFO) << "Cand voxel " << candidate_frontier_voxel.format(InLine);
   }
   return;
@@ -131,7 +132,7 @@ float CandidateView<T>::getViewInformationGain(pose3D &pose) {
   // const float r_min = 0.01; // depth camera r min [m]  gazebo model
   const float fov_hor = planning_config_.fov_hor;
 //  float fov_hor = static_cast<float>(planning_config_.fov_hor * 180.f / M_PI); // 2.0 = 114.59 deg
-  const float fov_vert = fov_hor * 480.f / 640.f; // image size
+  const float fov_vert = planning_config_.fov_vert; // image size
 
   // temporary
   const int n_col = fov_vert / dphi_;
@@ -250,6 +251,9 @@ std::pair<float, float> CandidateView<T>::getRayInformationGain(const Eigen::Vec
       for (; t < tfar; t += step_) {
         const Eigen::Vector3f pos = origin + direction * t;
         const Eigen::Vector3i pos_v = (pos/res_).cast<int>();
+        if(pos_v.x()<=0 ||pos_v.y() <= 0 || pos_v.z() <= 0 ||
+        pos_v.x() >= octree_ptr_->size() || pos_v.y() >= octree_ptr_->size() || pos_v.z()>= octree_ptr_->size() )
+          break;
         const auto  data = octree_ptr_->get(pos_v);
         prob_log = octree_ptr_->interp(pos_v.cast<float>(), select_occupancy);
         ig_entropy += getEntropy(prob_log);

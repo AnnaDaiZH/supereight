@@ -31,6 +31,7 @@ struct Planning_Configuration {
    * https://github.com/ethz-asl/rotors_simulator/blob/master/rotors_description/urdf/component_snippets.xacro
    */
   int fov_hor;
+  int fov_vert;
 
   /**
    * deg
@@ -88,6 +89,7 @@ inline Planning_Configuration getDefaultPlanningConfig() {
   config.robot_safety_radius_max = 0.9f;
   config.robot_safety_radius_min = 0.5f;
   config.fov_hor = 120;
+  config.fov_vert = 90;
   config.dphi = 10;
   config.dtheta = 20;
   config.clear_sphere_for_planning = true;
