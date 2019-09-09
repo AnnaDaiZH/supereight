@@ -128,7 +128,7 @@ template<typename T>
 float CandidateView<T>::getViewInformationGain(pose3D &pose) {
   DLOG(INFO) << pose.p.format(InLine);
   float gain = 0.0;
-  const float r_max = farPlane; // equal to far plane
+  const float r_max = planning_config_.sensor_depth; // equal to far plane
   // const float r_min = 0.01; // depth camera r min [m]  gazebo model
   const float fov_hor = planning_config_.fov_hor;
 //  float fov_hor = static_cast<float>(planning_config_.fov_hor * 180.f / M_PI); // 2.0 = 114.59 deg
@@ -165,7 +165,7 @@ float CandidateView<T>::getViewInformationGain(pose3D &pose) {
       vec[2] = cand_view_m[2] + r_max * cos(phi_rad);
       dir = (vec - cand_view_m).normalized();
       // initialize ray
-      se::ray_iterator<T> ray(*octree_ptr_, cand_view_m, dir, nearPlane, farPlane);
+      se::ray_iterator<T> ray(*octree_ptr_, cand_view_m, dir, nearPlane, r_max);
       ray.next();
       // lower bound dist from camera
       const float t_min = ray.tcmin(); /* Get distance to the first intersected block */

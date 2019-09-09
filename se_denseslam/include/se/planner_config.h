@@ -81,6 +81,8 @@ struct Planning_Configuration {
   int random_generator_seed;
 
   float dt;
+
+  float sensor_depth;
 };
 
 inline Planning_Configuration getDefaultPlanningConfig() {
@@ -107,6 +109,7 @@ inline Planning_Configuration getDefaultPlanningConfig() {
   config.yaw_optimization = true;
   config.random_generator_seed = 13;
   config.dt = 0.1f;
+  config.sensor_depth = 5.0f;
   return config;
 }
 #endif //SUPEREIGHT_PLANNER_CONFIG_H
