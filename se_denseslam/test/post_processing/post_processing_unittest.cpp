@@ -230,7 +230,7 @@ TEST_F(TestOctree, CropOctreeExact) {
       free_nodes,      free_node_volume,
       occupied_nodes,  occupied_node_volume);
 
-  // Compare with the exprected number of voxels.
+  // Compare with the expected number of voxels.
   const float voxel_block_volume
       = std::pow(BLOCK_SIDE, 3.f) * std::pow(octree_->voxelDim(), 3.f);
   EXPECT_EQ(      free_voxels,           0);
@@ -241,5 +241,207 @@ TEST_F(TestOctree, CropOctreeExact) {
   EXPECT_FLOAT_EQ(free_node_volume,      36 * voxel_block_volume);
   EXPECT_EQ(      occupied_nodes,        12);
   EXPECT_FLOAT_EQ(occupied_node_volume,  12 * voxel_block_volume);
+}
+
+
+
+TEST_F(TestOctree, ComputeVolumeExact) {
+  // Crop the octree.
+  const Eigen::Vector3f dim (64 * octree_->voxelDim(),
+                             32 * octree_->voxelDim(),
+                             16 * octree_->voxelDim());
+
+  // Count the explored voxels.
+  float  free_voxel_volume;
+  float  occupied_voxel_volume;
+  float  free_node_volume;
+  float  occupied_node_volume;
+  compute_bounded_volume(*octree_, dim,
+      free_voxel_volume, occupied_voxel_volume,
+      free_node_volume, occupied_node_volume);
+
+  // Compare with the expected number of voxels.
+  const float voxel_block_volume
+      = std::pow(BLOCK_SIDE, 3.f) * std::pow(octree_->voxelDim(), 3.f);
+  EXPECT_FLOAT_EQ(free_voxel_volume,     0.f);
+  EXPECT_FLOAT_EQ(occupied_voxel_volume, 0.f);
+  EXPECT_FLOAT_EQ(free_node_volume,      36 * voxel_block_volume);
+  EXPECT_FLOAT_EQ(occupied_node_volume,  12 * voxel_block_volume);
+}
+
+
+
+
+
+class TestOctree2 : public ::testing::Test {
+  protected:
+    virtual void SetUp() {
+      free_voxels_     = 0;
+      occupied_voxels_ = 0;
+      free_nodes_      = 0;
+      occupied_nodes_  = 0;
+      free_voxel_volume_     = 0.f;
+      occupied_voxel_volume_ = 0.f;
+      free_node_volume_      = 0.f;
+      occupied_node_volume_  = 0.f;
+
+      octree_ = std::make_shared<se::Octree<testT> >();
+      octree_->init(octree_size_, octree_dim_);
+
+      const float single_voxel_volume = std::pow(octree_->voxelDim(), 3);
+
+      // Allocate some VoxelBlocks.
+      constexpr size_t num_voxel_blocks = 8;
+      const Eigen::Vector3i blocks[num_voxel_blocks] = {
+          {16, 16, 32}, {24, 16, 32}, {16, 24, 32}, {24, 24, 32},
+          {16, 16, 40}, {24, 16, 40}, {16, 24, 40}, {24, 24, 40},
+      };
+      se::key_t alloc_list[num_voxel_blocks];
+      for (size_t i = 0; i < num_voxel_blocks; ++i) {
+        alloc_list[i] = octree_->hash(blocks[i](0), blocks[i](1), blocks[i](2));
+      }
+      octree_->allocate(alloc_list, num_voxel_blocks);
+
+      // Set the values of all the single voxels by iterating over all voxels
+      // of each allocated VoxelBlock.
+      for (size_t i = 0; i < num_voxel_blocks; ++i) {
+        se::VoxelBlock<testT> * vblock
+            = octree_->fetch(blocks[i].x(), blocks[i].y(), blocks[i].z());
+
+        for (size_t z = 0; z < BLOCK_SIDE; ++z) {
+          for (size_t y = 0; y < BLOCK_SIDE; ++y) {
+            for (size_t x = 0; x < BLOCK_SIDE; ++x) {
+              const Eigen::Vector3i vox = blocks[i] + Eigen::Vector3i(x, y, z);
+              // The value of each voxel is proportional to the sum of its
+              // coordinates and side length.
+              valT val;
+              if (vox.x() < vox.y() ) {
+                val.x = val_;
+                occupied_voxels_++;
+                occupied_voxel_volume_ += single_voxel_volume;
+              } else {
+                val.x = -val_;
+                free_voxels_++;
+                free_voxel_volume_ += single_voxel_volume;
+              }
+              vblock->data(vox, val);
+            }
+          }
+        }
+      }
+
+      // Allocate some Nodes. The fourth vector element is the node side.
+      constexpr size_t num_nodes = 4+4+1;
+      const Eigen::Vector4i nodes[num_nodes] = {
+          {16, 16, 32, 16}, {32, 16, 32, 16}, {16, 32, 32, 16}, {32, 32, 32, 16},
+          { 0,  0, 32, 32}, {32,  0, 32, 32}, { 0, 32, 32, 32}, {32, 32, 32, 32},
+          { 0,  0,  0, 64},
+      };
+      for (size_t i = 0; i< num_nodes; ++i) {
+        const int node_level = std::log2(octree_->size() / nodes[i].w());
+        se::Node<testT>* n = octree_->insert(
+            nodes[i].x(), nodes[i].y(), nodes[i].z(), node_level);
+        // Set the value of each child.
+        for (size_t j = 0; j < 8; ++j) {
+          const Eigen::Vector3i child_v = n->childCoordinates(j);
+          // The value of each child is proportional to the sum of its
+          // coordinates and side length.
+          valT val;
+          if (child_v.x() < child_v.y() ) {
+            val.x = val_;
+            if (n->child(j) == nullptr) {
+              occupied_nodes_++;
+              occupied_node_volume_ += std::pow(n->side_ / 2, 3) * single_voxel_volume;
+            }
+          } else {
+            val.x = -val_;
+            if (n->child(j) == nullptr) {
+              free_nodes_++;
+              free_node_volume_ += std::pow(n->side_ / 2, 3) * single_voxel_volume;
+            }
+          }
+          n->value_[j] = val;
+        }
+      }
+
+      // Export the list of allocated nodes and the created octree.
+      //octree_->save("/tmp/test_map.bin");
+      //octree_->writeAllocatedNodes("/tmp/test_nodes2.txt");
+    }
+
+    static constexpr float val_ = 1.f;
+    static constexpr int octree_size_ = 64;
+    static constexpr float octree_dim_ = 10.f;
+
+    std::shared_ptr<se::Octree<testT> > octree_;
+    size_t free_voxels_;
+    float  free_voxel_volume_;
+    size_t occupied_voxels_;
+    float  occupied_voxel_volume_;
+    size_t free_nodes_;
+    float  free_node_volume_;
+    size_t occupied_nodes_;
+    float  occupied_node_volume_;
+};
+
+
+
+
+
+TEST_F(TestOctree2, ComputeVolumeExact) {
+  // Crop the octree.
+  const Eigen::Vector3f dim (32 * octree_->voxelDim(),
+                             32 * octree_->voxelDim(),
+                             16 * octree_->voxelDim());
+  const float expected_total_volume = dim.x() * dim.y() * dim.z();
+
+  // Count the explored voxels.
+  float  free_voxel_volume;
+  float  occupied_voxel_volume;
+  float  free_node_volume;
+  float  occupied_node_volume;
+  compute_bounded_volume(*octree_, dim,
+      free_voxel_volume, occupied_voxel_volume,
+      free_node_volume, occupied_node_volume);
+
+  // Compare with the expected number of voxels.
+  const size_t voxels_in_block = std::pow(BLOCK_SIDE, 3.f);
+  const float voxel_volume = std::pow(octree_->voxelDim(), 3.f);
+  const float voxel_block_volume
+      = voxels_in_block * std::pow(octree_->voxelDim(), 3.f);
+  EXPECT_FLOAT_EQ(free_voxel_volume,     (4 * voxels_in_block + 2 * (BLOCK_SIDE * BLOCK_SIDE)) * voxel_volume);
+  EXPECT_FLOAT_EQ(occupied_voxel_volume, (4 * voxels_in_block - 2 * (BLOCK_SIDE * BLOCK_SIDE)) * voxel_volume);
+  EXPECT_FLOAT_EQ(free_node_volume,      (8 + 6) * voxel_block_volume);
+  EXPECT_FLOAT_EQ(occupied_node_volume,  (8 + 2) * voxel_block_volume);
+  EXPECT_FLOAT_EQ(free_voxel_volume
+                  + occupied_voxel_volume
+                  + free_node_volume
+                  + occupied_node_volume, expected_total_volume);
+}
+
+
+
+TEST_F(TestOctree2, ComputeVolumeNonExact) {
+  const Eigen::Vector3f dim (33.5f * octree_->voxelDim(),
+                             33.5f * octree_->voxelDim(),
+                             17.5f * octree_->voxelDim());
+  const float expected_total_volume = dim.x() * dim.y() * dim.z();
+
+  // Count the explored voxels.
+  float  free_voxel_volume;
+  float  occupied_voxel_volume;
+  float  free_node_volume;
+  float  occupied_node_volume;
+  compute_bounded_volume(*octree_, dim,
+      free_voxel_volume, occupied_voxel_volume,
+      free_node_volume, occupied_node_volume);
+
+  // Compare with the expected number of voxels.
+  const float voxel_block_volume
+      = std::pow(BLOCK_SIDE, 3.f) * std::pow(octree_->voxelDim(), 3.f);
+  EXPECT_FLOAT_EQ(free_voxel_volume
+                  + occupied_voxel_volume
+                  + free_node_volume
+                  + occupied_node_volume, expected_total_volume);
 }
 
