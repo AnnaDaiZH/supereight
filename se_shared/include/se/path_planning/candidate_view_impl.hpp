@@ -24,7 +24,7 @@ void CandidateView<T>::printFaceVoxels(const Eigen::Vector3i &_voxel) {
   face_neighbour_voxel[5] << _voxel.x(), _voxel.y(), _voxel.z() + 1;
   std::cout << "[se/cand view] face voxel states ";
   for (const auto &face_voxel : face_neighbour_voxel) {
-    std::cout << volume_._map_get->get(face_voxel).st << " ";
+    std::cout << octree_ptr_->get(face_voxel).st << " ";
   }
   std::cout << std::endl;
 
@@ -37,19 +37,27 @@ void CandidateView<T>::printFaceVoxels(const Eigen::Vector3i &_voxel) {
  * @param frontier_blocks_map
  */
 template<typename T>
-void CandidateView<T>::getCandidateViews( const set3i &frontier_blocks_map, const int frontier_cluster_size) {
+void CandidateView<T>::getCandidateViews( set3i &frontier_blocks_map, const int frontier_cluster_size) {
 
   mapvec3i frontier_voxels_map;
-  node_iterator<T> node_it(*(volume_._map_index));
+  node_iterator<T> node_it(*octree_ptr_);
 
   // get all frontier voxels inside a voxel block
 
-  for (const auto &frontier_block : frontier_blocks_map) {
-    VecVec3i frontier_voxels = node_it.getFrontierVoxels(frontier_block);
+  // for (const auto &frontier_block : frontier_blocks_map) {
+  for (auto it = frontier_blocks_map.begin() ; it != frontier_blocks_map.end();it++){
+    VecVec3i frontier_voxels = node_it.getFrontierVoxels(*it);
+    DLOG(INFO) << "frontier voxel size "<< frontier_voxels.size();
     if(frontier_voxels.size()>0){
-      frontier_voxels_map[frontier_block] = frontier_voxels;
+      frontier_voxels_map[*it] = frontier_voxels;
+      DLOG(INFO) << " mapsize "<< frontier_voxels_map.size();
+      // it++;
     }
+    // else{
+    //   it = frontier_blocks_map.erase(it);
+    // }
   }
+  DLOG(INFO) << "frontier map size: "<< frontier_voxels_map.size();
 
   if(frontier_voxels_map.size()==0){
     candidates_.clear();
@@ -57,26 +65,34 @@ void CandidateView<T>::getCandidateViews( const set3i &frontier_blocks_map, cons
     return;
   }
 
-  // random candidate view generator
+  int sampling_step = std::ceil(frontier_voxels_map.size()/num_sampling_);
+  if (sampling_step==0) sampling_step=1;
+  DLOG(INFO)<<"sampling every " << sampling_step << "th morton code";
+
   std::random_device rd;
   std::default_random_engine generator(planning_config_.random_generator_seed);
   if(planning_config_.random_generator_seed==0){
-    LOG(INFO)<<"using rand";
+    // LOG(INFO)<<"using rand"
     std::default_random_engine generator(rd());
   }
 
   std::uniform_int_distribution<int> distribution_block(0, frontier_voxels_map.size() - 1);
-
+  auto it = frontier_voxels_map.begin();
 #pragma omp parallel for
   for (int i = 0; i < num_sampling_; i++) {
-    auto it = frontier_voxels_map.begin();
-    const int rand_num = distribution_block(generator);
 
-    std::advance(it, rand_num);
+
+    // const int rand_num = distribution_block(generator);
+
+    std::advance(it, sampling_step);
     uint64_t rand_morton = it->first;
 
+    DLOG(INFO) << " morton " << rand_morton << " coord " << keyops::decode(rand_morton).format(InLine)
+    << " num frontier voxel "<< frontier_voxels_map[rand_morton].size();
     if (frontier_voxels_map[rand_morton].size() < frontier_cluster_size ||
       frontier_voxels_map[rand_morton].size() ==0) {
+      DLOG(INFO) << " size "<< frontier_voxels_map[rand_morton].size()  << " "<<frontier_cluster_size;
+
       continue;
     }
 
@@ -84,21 +100,25 @@ void CandidateView<T>::getCandidateViews( const set3i &frontier_blocks_map, cons
         distribution_voxel(0, frontier_voxels_map[rand_morton].size() - 1);
     // random frontier voxel inside the the randomly chosen voxel block
     int rand_voxel = distribution_voxel(generator);
+    DLOG(INFO) << " rand voxel " << rand_voxel << " size " << frontier_voxels_map[rand_morton].size();
     Eigen::Vector3i candidate_frontier_voxel = frontier_voxels_map[rand_morton].at(rand_voxel);
     boundHeight(candidate_frontier_voxel.z(),
                     planning_config_.height_max + ground_height_,
                     planning_config_.height_min + ground_height_,
                     res_);
 
-    bool is_free = pcc_->isSphereSkeletonFreeCand(candidate_frontier_voxel, static_cast<int>(
-        planning_config_.robot_safety_radius_min / res_));
-    if (is_free == 1) {
-      candidates_[i].pose.p = candidate_frontier_voxel.cast<float>();
-      num_cands_++;
-    } else {
-      candidates_[i].pose.p = Eigen::Vector3f(0, 0, 0);
-    }
-
+    // bool is_free = pcc_->isSphereSkeletonFreeCand(candidate_frontier_voxel, static_cast<int>(
+    //     0.25f/ res_));
+    // if (is_free == 1) {
+    //   candidates_[i].pose.p = candidate_frontier_voxel.cast<float>();
+    //   num_cands_++;
+    //   DLOG(INFO) << " free voxel ";
+    // } else {
+    //   DLOG(INFO) << " not free ";
+    //   candidates_[i].pose.p = Eigen::Vector3f(0, 0, 0);
+    // }
+    candidates_[i].pose.p = candidate_frontier_voxel.cast<float>();
+    num_cands_++;
     DLOG(INFO) << "Cand voxel " << candidate_frontier_voxel.format(InLine);
   }
   return;
@@ -108,11 +128,11 @@ template<typename T>
 float CandidateView<T>::getViewInformationGain(pose3D &pose) {
   DLOG(INFO) << pose.p.format(InLine);
   float gain = 0.0;
-  const float r_max = farPlane; // equal to far plane
+  const float r_max = planning_config_.sensor_depth; // equal to far plane
   // const float r_min = 0.01; // depth camera r min [m]  gazebo model
   const float fov_hor = planning_config_.fov_hor;
 //  float fov_hor = static_cast<float>(planning_config_.fov_hor * 180.f / M_PI); // 2.0 = 114.59 deg
-  const float fov_vert = fov_hor * 480.f / 640.f; // image size
+  const float fov_vert = planning_config_.fov_vert; // image size
 
   // temporary
   const int n_col = fov_vert / dphi_;
@@ -145,7 +165,7 @@ float CandidateView<T>::getViewInformationGain(pose3D &pose) {
       vec[2] = cand_view_m[2] + r_max * cos(phi_rad);
       dir = (vec - cand_view_m).normalized();
       // initialize ray
-      se::ray_iterator<T> ray(*volume_._map_index, cand_view_m, dir, nearPlane, farPlane);
+      se::ray_iterator<T> ray(*octree_ptr_, cand_view_m, dir, nearPlane, r_max);
       ray.next();
       // lower bound dist from camera
       const float t_min = ray.tcmin(); /* Get distance to the first intersected block */
@@ -203,13 +223,12 @@ float CandidateView<T>::getViewInformationGain(pose3D &pose) {
 
 /**
  * march along the ray until max sensor depth or a surface is hit to calculate the entropy reduction
- * TODO add weight for unknown voxels
- * @param volume
+ *
  * @param origin cand view [m]
  * @param direction [m]
  * @param tnear
  * @param tfar max sensor depth
- * @param step
+ * @param origin
  * @return
  */
 template<typename T>
@@ -217,22 +236,26 @@ std::pair<float, float> CandidateView<T>::getRayInformationGain(const Eigen::Vec
                                                                 const float tnear,
                                                                 const float tfar,
                                                                 const Eigen::Vector3f &origin) {
-  auto select_occupancy = [](typename Volume<T>::value_type val) { return val.x; };
+  auto select_occupancy = [](typename VoxelBlock<T>::value_type val) { return val.x; };
   // march from camera away
   float ig_entropy = 0.0f;
   float t = tnear; // closer bound to camera
   if (tnear < tfar) {
 
     // occupancy prob in log2
-    float prob_log = volume_.interp(origin + direction * t, select_occupancy);
+    float prob_log = octree_ptr_->interp(origin + direction * t, select_occupancy);
     float weight = 1.0f;
     // check if current pos is free
     if (prob_log <= SURF_BOUNDARY + occ_thresh_) {
       ig_entropy = weight * getEntropy(prob_log);
       for (; t < tfar; t += step_) {
         const Eigen::Vector3f pos = origin + direction * t;
-        typename Volume<T>::value_type data = volume_.get(pos);
-        prob_log = volume_.interp(origin + direction * t, select_occupancy);
+        const Eigen::Vector3i pos_v = (pos/res_).cast<int>();
+        if(pos_v.x()<=0 ||pos_v.y() <= 0 || pos_v.z() <= 0 ||
+        pos_v.x() >= octree_ptr_->size() || pos_v.y() >= octree_ptr_->size() || pos_v.z()>= octree_ptr_->size() )
+          break;
+        const auto  data = octree_ptr_->get(pos_v);
+        prob_log = octree_ptr_->interp(pos_v.cast<float>(), select_occupancy);
         ig_entropy += getEntropy(prob_log);
 
 // next step along the ray hits a surface with a secure threshold return
@@ -271,12 +294,9 @@ float CandidateView<T>::getIGWeight_tanh(const float tanh_range,
   return weight;
 }
 
-// TODO parametrize variables
-
 // information gain calculation
 // source [1] aeplanner gainCubature
-// not implemented [2]history aware aoutonomous exploration in confined environments using MAVs
-// (cylindric)
+
 
 template<typename T>
 void CandidateView<T>::calculateCandidateViewGain() {
@@ -319,7 +339,11 @@ void CandidateView<T>::calculateUtility(Candidate &candidate) {
   wrapYawRad(yaw_diff);
   float t_yaw = fabs(yaw_diff / max_yaw_rate);
 
-  candidate.utility = candidate.information_gain / (t_yaw + t_path*planning_config_.path_cost);
+  candidate.utility = candidate.information_gain / (t_yaw + t_path);
+
+  if( t_path ==0 && t_yaw < 0.001){
+    candidate.utility = 0;
+  }
 
   // LOG(INFO) << "Cand coord" << candidate.pose.p.format(InLine) << "ig "
              // << candidate.information_gain << " t_yaw " << t_yaw << " t_path " << t_path
@@ -340,7 +364,6 @@ int CandidateView<T>::getBestCandidate() {
 
   // path cost = voxel *res[m/vox] / (v =1m/s) = time
 
-  // int views_to_evaluate = force_travelling ? planning_config_.num_cand_views : planning_config_.num_cand_views + 1;
 #pragma omp parallel for
   for (int i = 0; i < num_sampling_; i++) {
     if (candidates_[i].pose.p != Eigen::Vector3f(0, 0, 0)
@@ -349,7 +372,6 @@ int CandidateView<T>::getBestCandidate() {
     }
   }
   // highest utility in the beginning
-  // TODO prune invalid ones after sorting
 
   std::sort(candidates_.begin(),
             candidates_.end(),
@@ -367,14 +389,13 @@ VecPose CandidateView<T>::getFinalPath(Candidate &candidate ) {
 
   VecPose path;
 // first add points between paths
-  if(candidate.path.size()>2 && planning_config_.yaw_optimization){
-    candidate.path[0]= curr_pose_.pose;
+  if(candidate.path.size()>2 ){
     for (int i = 1; i < candidate.path.size(); i++) {
 
       DLOG(INFO) << "segment start " << candidate.path[i - 1].p.format(InLine) << " end "
       << candidate.path[i].p.format(InLine);
      VecPose path_tmp;
-      if((candidate.path[i].p -candidate.path[i - 1].p).norm() > planning_config_.max_rrt_edge_length){
+      if((candidate.path[i].p -candidate.path[i - 1].p).norm() > planning_config_.v_max*planning_config_.dt){
          path_tmp = addPathSegments(candidate.path[i-1], candidate.path[i] );
       } else{
 
@@ -382,8 +403,25 @@ VecPose CandidateView<T>::getFinalPath(Candidate &candidate ) {
         path_tmp.push_back(candidate.path[i]);
       }
 
-      getViewInformationGain(candidate.path[i]);
-      VecPose yaw_path = getYawPath(candidate.path[i-1], candidate.path[i]);
+
+      VecPose yaw_path;
+      if(planning_config_.yaw_optimization || i == candidate.path.size()-1){
+        getViewInformationGain(candidate.path[i]);
+      }else{
+      // look in the flight direction
+        float x_side = (candidate.path[i].p.x() - candidate.path[i-1].p.x());
+        float y_side = (candidate.path[i].p.y() - candidate.path[i-1].p.y());
+        float angle = (float) atan2(y_side, x_side);
+        wrapYawRad(angle);
+        candidate.path[i].q = toQuaternion(angle, 0,0);
+        yaw_path = getYawPath(candidate.path[i-1], candidate.path[i]);
+      }
+
+      if(i==1){
+        yaw_path =getYawPath(pose_, candidate.path[i]);
+      }else{
+        yaw_path =getYawPath(candidate.path[i-1], candidate.path[i]);
+      }
       VecPose path_fused = fusePath(path_tmp, yaw_path);
         // push back the new path
       for(const auto& pose : path_fused){
@@ -393,7 +431,7 @@ VecPose CandidateView<T>::getFinalPath(Candidate &candidate ) {
   }else{
     VecPose yaw_path = getYawPath(pose_, candidate.pose );
     VecPose path_tmp;
-    if((candidate.pose.p -pose_.p).norm() > planning_config_.max_rrt_edge_length){
+    if((candidate.pose.p -pose_.p).norm() > planning_config_.v_max*planning_config_.dt){
        path_tmp = addPathSegments(pose_, candidate.pose );
     }else{
        path_tmp = candidate.path;
@@ -446,9 +484,10 @@ VecPose CandidateView<T>::getYawPath(const pose3D &start,
   wrapYawRad(yaw_diff);
   // LOG(INFO) << "[interpolateYaw] yaw diff " << yaw_diff ;
   // interpolate yaw
-  for(int i = 0; i < std::abs(yaw_diff)/max_yaw_rate ;i++){
+  float yaw_increment = (planning_config_.max_yaw_rate * planning_config_.dt)/ std::abs(yaw_diff);
+  for(float i = 0.f; i <= 1.0f ; i+= yaw_increment){
     pose_tmp = goal;
-    pose_tmp.q = start.q.slerp(i*max_yaw_rate/std::abs(yaw_diff), goal.q);
+    pose_tmp.q = start.q.slerp(i, goal.q);
     DLOG(INFO)<< "intermediate yaw "<< toEulerAngles(pose_tmp.q).yaw *180/M_PI;
     pose_tmp.q.normalize();
     path.push_back(pose_tmp);
@@ -465,7 +504,8 @@ template<typename T>
 VecPose CandidateView<T>::addPathSegments(const pose3D &start_in,
  const pose3D &goal_in) {
 
-  int sampling_dist_v = static_cast<int>(planning_config_.max_rrt_edge_length / res_);
+
+
   VecPose path_out;
   pose3D start = start_in;
   pose3D goal = goal_in;
@@ -485,9 +525,10 @@ VecPose CandidateView<T>::addPathSegments(const pose3D &start_in,
   goal.p.z() = (float)goal_h;
   path_out.push_back(start);
   float dist = (goal.p - start.p).norm();
+  float dist_increment = (planning_config_.v_max*planning_config_.dt / res_)/dist; // [voxel]
   Eigen::Vector3f dir = (goal.p - start.p).normalized();
-  for (float t = sampling_dist_v; t < dist; t += sampling_dist_v) {
-    Eigen::Vector3f intermediate_point = start.p + dir * t;
+  for (float t = 0.f; t <= 1.0f; t += dist_increment) {
+    Eigen::Vector3f intermediate_point = start.p + dir * t*dist;
     pose3D tmp(intermediate_point, {1.f, 0.f, 0.f, 0.f});
     DLOG(INFO) << "intermediate_point " << intermediate_point.format(InLine);
     path_out.push_back(tmp);

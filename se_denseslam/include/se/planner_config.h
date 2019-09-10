@@ -23,14 +23,14 @@ struct Planning_Configuration {
   /**
    * distance [m] from frontier wall away. will be converted to voxel distance
    */
-  float robot_safety_radius_max;
-  float robot_safety_radius_min;
+  float robot_safety_radius;
 
   /**
    * horizontal field of view from gazebo model for depth sensor
    * https://github.com/ethz-asl/rotors_simulator/blob/master/rotors_description/urdf/component_snippets.xacro
    */
   int fov_hor;
+  int fov_vert;
 
   /**
    * deg
@@ -73,23 +73,25 @@ struct Planning_Configuration {
 
   float max_yaw_rate;
 
-  float max_rrt_edge_length;
+  float v_max;
 
   bool yaw_optimization;
 
   int random_generator_seed;
 
-  int path_cost;
+  float dt;
+
+  float sensor_depth;
 };
 
 inline Planning_Configuration getDefaultPlanningConfig() {
   Planning_Configuration config;
   config.num_cand_views = 20;
-  config.robot_safety_radius_max = 0.9f;
-  config.robot_safety_radius_min = 0.5f;
+  config.robot_safety_radius= 0.5f;
   config.fov_hor = 120;
+  config.fov_vert = 90;
   config.dphi = 10;
-  config.dtheta = 10;
+  config.dtheta = 20;
   config.clear_sphere_for_planning = true;
   config.clearance_radius = 1.0f;
   config.height_max = 2.3f;
@@ -101,10 +103,11 @@ inline Planning_Configuration getDefaultPlanningConfig() {
   config.planner_type = kInformedRrtStar;
   config.ceiling_height = 3.0f;
   config.max_yaw_rate = 0.523;
-  config.max_rrt_edge_length = 1.0f;
+  config.v_max = 1.0f;
   config.yaw_optimization = true;
   config.random_generator_seed = 13;
-  config.path_cost = 1;
+  config.dt = 0.1f;
+  config.sensor_depth = 5.0f;
   return config;
 }
 #endif //SUPEREIGHT_PLANNER_CONFIG_H

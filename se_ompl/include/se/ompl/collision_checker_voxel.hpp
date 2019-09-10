@@ -94,7 +94,7 @@ const Planning_Configuration &planning_config
 :
 octree_ptr_ (octree_ptr), planning_params_(planning_config) {
   voxel_dim_ = octree_ptr->voxelDim();
-  node_level_ = getNodeLevel(std::ceil(planning_params_.robot_safety_radius_min / voxel_dim_) * 2);
+  node_level_ = getNodeLevel(std::ceil(planning_params_.robot_safety_radius / voxel_dim_) * 2);
 
   DLOG(INFO) << "Collision Checker V setup";
   DLOG(INFO) << "node level " << node_level_;
@@ -112,6 +112,11 @@ bool CollisionCheckerV<FieldType>::isVoxelFree(const Eigen::Vector3i &point_v) c
   }
   octree_ptr_->fetch_octant(point_v.x(), point_v.y(), point_v.z(), node, is_voxel_block);
   if (is_voxel_block) {
+    if(node == nullptr){
+      LOG(INFO) << "NODE node null ptr but is block";
+      return false;
+    }
+
     block = static_cast<se::VoxelBlock<FieldType> *> (node);
     if (block->data(point_v).x <= THRESH_FREE_LOG) {
       // DLOG(INFO) << "free at "
@@ -125,7 +130,13 @@ bool CollisionCheckerV<FieldType>::isVoxelFree(const Eigen::Vector3i &point_v) c
       return false;
     }
 
-  } else {
+  } else if(octree_ptr_->isRoot(node)){
+    LOG(INFO) << "NODE root ";
+    return false;
+  } else if( node == nullptr && !is_voxel_block){
+    LOG(INFO) << "NODE node null ptr but not block ";
+    return false;
+  } else{
     const unsigned int
         id = se::child_id(node->code_, octree_ptr_->leaf_level(), octree_ptr_->max_level());
     const auto &data = node->parent()->value_[id];

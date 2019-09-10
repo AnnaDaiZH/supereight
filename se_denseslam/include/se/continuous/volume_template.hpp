@@ -77,6 +77,7 @@ class VolumeTemplate {
     value_type get(const Eigen::Vector3f& p) const {
       const float inverseVoxelSize = _size/_extent;
       const Eigen::Vector4i scaled_pos = (inverseVoxelSize * p.homogeneous()).cast<int>();
+
         return _map_index->get_fine(scaled_pos.x(),
                                     scaled_pos.y(),
                                     scaled_pos.z());

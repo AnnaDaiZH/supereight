@@ -8,10 +8,8 @@ project(se-denseslam)
 # Find dependencies.
 find_package(Eigen3 REQUIRED)
 find_package(Sophus REQUIRED)
-find_package(OpenCV REQUIRED)
 find_package(glog REQUIRED)
 find_package(ompl REQUIRED)
-find_package(yaml-cpp REQUIRED)
 if (WITH_OPENMP)
     find_package(OpenMP)
     if (OPENMP_FOUND)
@@ -69,7 +67,6 @@ foreach (field_type ${SUPEREIGHT_FIELD_TYPES})
     target_link_libraries(${lib_name} ${libraries}
             ${OMPL_LIBRARIES}
             ${GLOG_LIBRARIES}
-            ${YAML_CPP_LIBRARIES}
             )
 
     target_compile_definitions(${lib_name} PUBLIC ${field_type_macro})

@@ -27,7 +27,6 @@
 #include <Eigen/StdVector>
 
 #include "se/geometry/octree_collision.hpp"
-#include "se/continuous/volume_template.hpp"
 #include "se/octree.hpp"
 #include "se/node_iterator.hpp"
 #include "se/constant_parameters.h"
@@ -39,7 +38,7 @@
 
 #include "se/path_planner_ompl.hpp"
 
-template<typename T> using Volume = VolumeTemplate<T, se::Octree>;
+
 //typedef SE_FIELD_TYPE FieldType;
 namespace se {
 
@@ -57,7 +56,7 @@ class CandidateView {
  public:
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
   typedef std::shared_ptr<CandidateView> SPtr;
-  CandidateView(const Volume<T> &volume,
+  CandidateView(const std::shared_ptr<Octree<T> > octree_ptr,
                 const Planning_Configuration &planning_config,
                 const std::shared_ptr<CollisionCheckerV<T> > pcc,
                 const float res,
@@ -66,7 +65,7 @@ class CandidateView {
                 const float step,
                 const float ground_height);
 
-  void getCandidateViews(const set3i &frontier_blocks_map, const int frontier_cluster_size);
+  void getCandidateViews(set3i &frontier_blocks_map, const int frontier_cluster_size);
 
   void printFaceVoxels(const Eigen::Vector3i &voxel);
 
@@ -96,6 +95,7 @@ class CandidateView {
   int getExplorationStatus() const { return exploration_status_; }
 
   float getTargetIG() const { return ig_target_; }
+  float getTotalIG() const {return ig_total_; }
   int getNumValidCandidates() const { return num_cands_; }
 
   VecCandidate candidates_;
@@ -103,7 +103,6 @@ class CandidateView {
  private:
   pose3D pose_;
   VecVec3i cand_views_;
-  Volume<T> volume_;
 
   float res_; // [m/vx]
   Planning_Configuration planning_config_;
@@ -121,10 +120,11 @@ class CandidateView {
   int num_cands_;
 
   std::shared_ptr<CollisionCheckerV<T> > pcc_ = nullptr;
+  std::shared_ptr<Octree<T> > octree_ptr_ = nullptr;
 };
 
 template<typename T>
-CandidateView<T>::CandidateView(const Volume<T> &volume,
+CandidateView<T>::CandidateView(const std::shared_ptr<Octree<T> > octree_ptr,
                                 const Planning_Configuration &planning_config,
                                 const std::shared_ptr<CollisionCheckerV<T> > pcc,
                                 const float res,
@@ -133,7 +133,7 @@ CandidateView<T>::CandidateView(const Volume<T> &volume,
                                 const float step,
                                 const float ground_height)
     :
-    volume_(volume),
+    octree_ptr_(octree_ptr),
     planning_config_(planning_config),
     res_(res),
     config_(config),
@@ -150,11 +150,11 @@ CandidateView<T>::CandidateView(const Volume<T> &volume,
   curr_pose_.path.push_back(curr_pose_.pose);
   curr_pose_.path_length = 0.f;
   pose_ = curr_pose_.pose;
-  int n_col = planning_config.fov_hor * 0.75 / planning_config.dphi;
+  int n_col = planning_config.fov_vert / planning_config.dphi;
   int n_row = planning_config.fov_hor / planning_config.dtheta;
   ig_total_ = n_col * n_row * (farPlane / step) * getEntropy(0);
-  ig_target_ = n_col * n_row * (farPlane / step) * getEntropy(log2(0.05 / (1.f - 0.05)));
-  // std::cout << "ig total " << ig_total_ << " ig target " << ig_target_ << std::endl;
+  ig_target_ = n_col * n_row * (farPlane / step) * getEntropy(log2(0.1 / (1.f - 0.1)));
+  LOG(INFO)<< "ig total " << ig_total_ << " ig target " << ig_target_ ;
   candidates_.resize(num_sampling_);
   DLOG(INFO) << "setup candidate view";
 }
@@ -176,8 +176,6 @@ CandidateView<T>::CandidateView(const Volume<T> &volume,
  */
 template<typename T>
 int getExplorationPath(std::shared_ptr<Octree<T> > octree_ptr,
-                       const Volume<T> &volume,
-                       const set3i &frontier_map,
                        const float res,
                        const float step,
                        const Planning_Configuration &planning_config,
@@ -186,6 +184,7 @@ int getExplorationPath(std::shared_ptr<Octree<T> > octree_ptr,
                        const Eigen::Vector3i &lower_bound,
                        const Eigen::Vector3i &upper_bound,
                        const float ground_height,
+                       set3i &frontier_map,
                        VecPose &path,
                        VecPose &cand_views
                        ) {
@@ -197,24 +196,22 @@ int getExplorationPath(std::shared_ptr<Octree<T> > octree_ptr,
   LOG(INFO) << "frontier map size " << frontier_map.size();
   // Candidate view generation
   CandidateView<T> candidate_view
-      (volume, planning_config, collision_checker_v, res, config, pose, step, ground_height);
+      (octree_ptr, planning_config, collision_checker_v, res, config, pose, step, ground_height);
 
   int frontier_cluster_size = planning_config.frontier_cluster_size;
   int counter = 0;
-  while (candidate_view.getNumValidCandidates() < 3) {
+  while (candidate_view.getNumValidCandidates() ==0 && frontier_map.size() != 0) {
     DLOG(INFO) << "get candidates";
     candidate_view.getCandidateViews(frontier_map, frontier_cluster_size);
-    if (frontier_cluster_size >= 8 ) {
-      frontier_cluster_size /= 2;
-    } else if(counter == 4 ){
+
+    if(counter == 20 ){
       LOG(INFO) << "no candidates ";
-      path.push_back(start);
-      return 1;
+      break;
     }
     counter++;
   }
 
-  float robot_safety_radius_tmp = planning_config.robot_safety_radius_max;
+  DLOG(INFO)<< "frontier map size" << frontier_map.size();
 #pragma omp parallel for
   for (int i = 0; i < planning_config.num_cand_views; i++) {
 
@@ -238,12 +235,11 @@ int getExplorationPath(std::shared_ptr<Octree<T> > octree_ptr,
 
 
       if (path_planned < 0 ) {
-        robot_safety_radius_tmp = planning_config.robot_safety_radius_max;
         Planning_Configuration planning_config_tmp = planning_config;
-        // try to plan a valid path with smaller safety radius
-        for(;robot_safety_radius_tmp>=planning_config.robot_safety_radius_min ; robot_safety_radius_tmp-=0.2f){
-          planning_config_tmp.robot_safety_radius_max = robot_safety_radius_tmp;
-          LOG(INFO) << "robot_safety_radius "<< planning_config_tmp.robot_safety_radius_max;
+        float robot_safety_radius = planning_config.robot_safety_radius;
+        for(;robot_safety_radius>=0.3f ; robot_safety_radius-=0.2f){
+          planning_config_tmp.robot_safety_radius = robot_safety_radius;
+          DLOG(INFO) << "robot_safety_radius "<< planning_config_tmp.robot_safety_radius;
           path_planner_ompl_ptr = aligned_shared<PathPlannerOmpl<T> >(octree_ptr,
                                                                        collision_checker,
                                                                        planning_config_tmp,
@@ -257,6 +253,7 @@ int getExplorationPath(std::shared_ptr<Octree<T> > octree_ptr,
           candidate_view.candidates_[i].planning_solution_status = path_planned;
 
           if(path_planned >0){
+            LOG(INFO) << "Found a path for cand " << i;
             break;
           }else{
             candidate_view.candidates_[i].path_length = (start.p - candidate_view.candidates_[i].pose.p).squaredNorm();
@@ -296,7 +293,7 @@ int getExplorationPath(std::shared_ptr<Octree<T> > octree_ptr,
   bool force_travelling = candidate_view.curr_pose_.information_gain < candidate_view.getTargetIG();
   if (valid_path) {
     best_cand_idx = candidate_view.getBestCandidate();
-    LOG(INFO) << "[se/candview] best candidate is "
+    DLOG(INFO) << "[se/candview] best candidate is "
               << (candidate_view.candidates_[best_cand_idx].pose.p * res).format(InLine);
     // std::cout << " path length of best cand "
     //           << candidate_view.candidates_[best_cand_idx].path.size() << std::endl;
@@ -307,9 +304,6 @@ int getExplorationPath(std::shared_ptr<Octree<T> > octree_ptr,
               << " curr pose utility " << candidate_view.curr_pose_.utility;
 
   }
-  // }
-  // TODO make this nicer
-
 
   VecPose path_tmp;
   if (valid_path && (!use_curr_pose || force_travelling)) {
@@ -333,7 +327,7 @@ int getExplorationPath(std::shared_ptr<Octree<T> > octree_ptr,
                << pose.q.vec().format(InLine);
     path.push_back(pose);
   }
-  if (candidate_view.getExplorationStatus() == 1) {
+  if (candidate_view.getExplorationStatus() == 1 || frontier_map.size() == 0) {
     return 1;
   } else {
     return -1;

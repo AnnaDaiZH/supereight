@@ -479,17 +479,19 @@ bool DenseSLAMSystem::integration(const Eigen::Vector4f &k,
                                   Eigen::Vector2i(computation_size_.x(), computation_size_.y()),
                                   funct);
       const int ceiling_height_v = (init_pose_(2)+ planning_config_.ceiling_height)/discrete_vol_ptr_->voxelDim();
-      const int ground_height_v = (init_pose_(2)+ planning_config_.height_min)/discrete_vol_ptr_->voxelDim();
+      const int ground_height_v = (init_pose_(2)+ 0.2f)/discrete_vol_ptr_->voxelDim();
+      Eigen::Vector3i position = (pose_.block<3,1>(0,3)/ voxelsize).cast<int>();
 
-
+      set3i* frontier_blocks_update = new set3i;
       se::multires::ofusion::integrate(*volume_._map_index, Tcw, K, voxelsize, Eigen::Vector3f::Constant(0.5),
-                                       float_depth_, mu, frame, ceiling_height_v, ground_height_v, updated_blocks,free_blocks,
-                                       frontier_blocks);
+                                       float_depth_, mu, frame, ceiling_height_v, ground_height_v, position, updated_blocks, free_blocks,
+                                       frontier_blocks, frontier_blocks_update);
 
 
       set3i *copy_frontier_blocks = frontier_blocks;
       bool update_frontier_map = (frame % integration_rate) == 0;
       // updateFrontierMap(volume_, frontier_map_, copy_frontier_blocks, update_frontier_map);
+      removeFromSet(frontier_map_, frontier_blocks_update);
       insertBlocksToMap(frontier_map_, frontier_blocks);
       // int map_size_before = free_map_.size();
       insertBlocksToMap(free_map_, free_blocks);
@@ -498,8 +500,8 @@ bool DenseSLAMSystem::integration(const Eigen::Vector4f &k,
         // getFreeMapBounds(discrete_vol_ptr_, free_map_, lower_map_bound_v_, upper_map_bound_v_);
         // std::cout << "map bounds " << lower_map_bound_v_ << " " << upper_map_bound_v_;
       // }
-      LOG(INFO) << "[se/denseslam] free_map_  size  " << free_map_.size() ;
-      LOG(INFO) << "[se/denseslam] frontier_map_ size " << frontier_map_.size() ;
+      DLOG(INFO) << "[se/denseslam] free_map_  size  " << free_map_.size() ;
+      DLOG(INFO) << "[se/denseslam] frontier_map_ size " << frontier_map_.size() ;
     }
 
     // if(frame % 15 == 0) {
@@ -520,24 +522,25 @@ bool DenseSLAMSystem::integration(const Eigen::Vector4f &k,
 int DenseSLAMSystem::planning(VecPose &path,
                                VecPose &cand_views,
                                mapvec3i *free_blocks) {
-  se::exploration::initNewPosition(pose_ * Tbc_,
-                                   planning_config_,
-                                   free_blocks,
-                                   *volume_._map_index);
-  int map_size_before = free_map_.size();
-  insertBlocksToMap(free_map_, free_blocks);
-  init_position_cleared_ = true;
+
+    se::exploration::initNewPosition(pose_ * Tbc_,
+                                     planning_config_,
+                                     free_blocks,
+                                     *volume_._map_index);
+    int map_size_before = free_map_.size();
+    insertBlocksToMap(free_map_, free_blocks);
+    init_position_cleared_ = true;
+    // LOG(INFO) << "Planning free_map_  size  " << free_map_.size();
+    // if(map_size_before != free_map_.size()){
+      getFreeMapBounds(discrete_vol_ptr_, free_map_, lower_map_bound_v_, upper_map_bound_v_);
+      // std::cout << "map bounds " << lower_map_bound_v_ << " " << upper_map_bound_v_;
+    // }
+
   float res_v = volume_dimension_.cast<float>().x() / volume_resolution_.cast<float>().x();
 
-  // LOG(INFO) << "Planning free_map_  size  " << free_map_.size();
-      if(map_size_before != free_map_.size()){
-        getFreeMapBounds(discrete_vol_ptr_, free_map_, lower_map_bound_v_, upper_map_bound_v_);
-        // std::cout << "map bounds " << lower_map_bound_v_ << " " << upper_map_bound_v_;
-      }
+
   float step = volume_dimension_.x() / volume_resolution_.x();
   int exploration_done =  se::exploration::getExplorationPath(discrete_vol_ptr_,
-                                      volume_,
-                                      frontier_map_,
                                       res_v,
                                       step,
                                       planning_config_,
@@ -546,6 +549,7 @@ int DenseSLAMSystem::planning(VecPose &path,
                                       lower_map_bound_v_,
                                       upper_map_bound_v_,
                                       init_pose_(2),
+                                      frontier_map_,
                                       path,
                                       cand_views
                                       );
