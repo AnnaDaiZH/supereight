@@ -82,6 +82,25 @@ end
 
 
 
+function [filenames, world] = parse_arguments()
+	% Get the command line arguments.
+	args = argv();
+	if isempty(args)
+	  fprintf('Usage: %s FILE1 [FILE2 ...]\n', program_invocation_name());
+	  fprintf('  Use bash globbing with * to select all files of interest, e.g.\n');
+	  fprintf('  %s map_1/map_2019-08-22_184424_*\n', program_invocation_name());
+	  return;
+	end
+
+	% Get the world name.
+	world = 'apartment';
+
+	% Sort the filenames.
+	filenames = sort(args);
+end
+
+
+
 % Main %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Get the path to the program used to evaluate maps.
 [script_dir, ~, ~] = fileparts(program_invocation_name());
@@ -89,23 +108,14 @@ voxelcounter_program = [script_dir ...
     '/../../build/Release/se_apps/se-denseslam-ofusion-compute-volume'];
 addpath(genpath([script_dir '/octave_functions']));
 
-% Get the command line arguments.
-args = argv();
-if isempty(args)
-  fprintf('Usage: %s FILE1 [FILE2 ...]\n', program_invocation_name());
-  fprintf('  Use bash globbing with * to select all files of interest, e.g.\n');
-  fprintf('  %s map_1/map_2019-08-22_184424_*\n', program_invocation_name());
-  return;
-end
-
 t = [];
 total_volume = [];
 voxel_volume = [];
 node_volume  = [];
 poses = {};
 
-% Sort the filenames.
-filenames = sort(args);
+% Parse command line arguments.
+[filenames, world] = parse_arguments();
 
 % Iterate over each file.
 for i = 1:length(filenames);
@@ -186,15 +196,15 @@ legend('Total volume', 'Node volume', 'Voxel volume', 'Location', 'southeast');
 axis([0 10*60], [0 600]);
 
 if export_plot
-  directory = fileparts(args{1});
-  timestamp = get_pattern(timestamp_pattern, args{1});
+  directory = fileparts(filenames{1});
+  timestamp = get_pattern(timestamp_pattern, filenames{1});
   image_name = [directory '/' 'data_plot_' timestamp '.png'];
   print(image_name);
 end
 
 if export_data
-  directory = fileparts(args{1});
-  timestamp = get_pattern(timestamp_pattern, args{1});
+  directory = fileparts(filenames{1});
+  timestamp = get_pattern(timestamp_pattern, filenames{1});
   data_file_name = [directory '/' 'data_' timestamp '.csv'];
     % The columns of the .csv file are:
     % timestamp, volume of explored voxels, volume of explored nodes, total
