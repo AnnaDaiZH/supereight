@@ -256,7 +256,7 @@ TEST_F(TestOctree, ComputeVolumeExact) {
   float  occupied_voxel_volume;
   float  free_node_volume;
   float  occupied_node_volume;
-  compute_bounded_volume(*octree_, dim,
+  compute_bounded_volume(*octree_, dim, Eigen::Vector3f::Constant(0.f),
       free_voxel_volume, occupied_voxel_volume,
       free_node_volume, occupied_node_volume);
 
@@ -400,7 +400,7 @@ TEST_F(TestOctree2, ComputeVolumeExact) {
   float  occupied_voxel_volume;
   float  free_node_volume;
   float  occupied_node_volume;
-  compute_bounded_volume(*octree_, dim,
+  compute_bounded_volume(*octree_, dim, Eigen::Vector3f::Constant(0.f),
       free_voxel_volume, occupied_voxel_volume,
       free_node_volume, occupied_node_volume);
 
@@ -432,7 +432,7 @@ TEST_F(TestOctree2, ComputeVolumeNonExact) {
   float  occupied_voxel_volume;
   float  free_node_volume;
   float  occupied_node_volume;
-  compute_bounded_volume(*octree_, dim,
+  compute_bounded_volume(*octree_, dim, Eigen::Vector3f::Constant(0.f),
       free_voxel_volume, occupied_voxel_volume,
       free_node_volume, occupied_node_volume);
 
