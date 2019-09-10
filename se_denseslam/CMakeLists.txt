@@ -8,7 +8,6 @@ project(se-denseslam)
 # Find dependencies.
 find_package(Eigen3 REQUIRED)
 find_package(Sophus REQUIRED)
-find_package(OpenCV REQUIRED)
 find_package(glog REQUIRED)
 find_package(ompl REQUIRED)
 find_package(yaml-cpp REQUIRED)
