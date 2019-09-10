@@ -46,7 +46,7 @@
 #include <se/planner_config.h>
 #include <se/octree.hpp>
 #include <se/image/image.hpp>
-#include "volume_traits.hpp"
+#include "se/volume_traits.hpp"
 #include "continuous/volume_template.hpp"
 #include <Eigen/Dense>
 
