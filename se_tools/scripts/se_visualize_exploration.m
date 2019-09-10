@@ -203,7 +203,7 @@ plot(t, voxel_volume, 'ro-', 'LineWidth', lw);
 xlabel('Time (s)');
 ylabel('Explored volume (m^3)');
 legend('Total volume', 'Node volume', 'Voxel volume', 'Location', 'southeast');
-axis([0 15*60], [0 world_volume]);
+axis([0 t(end) 0 world_volume]);
 
 if export_plot
   directory = fileparts(filenames{1});
