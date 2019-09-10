@@ -153,8 +153,8 @@ CandidateView<T>::CandidateView(const std::shared_ptr<Octree<T> > octree_ptr,
   int n_col = planning_config.fov_vert / planning_config.dphi;
   int n_row = planning_config.fov_hor / planning_config.dtheta;
   ig_total_ = n_col * n_row * (farPlane / step) * getEntropy(0);
-  ig_target_ = n_col * n_row * (farPlane / step) * getEntropy(log2(0.05 / (1.f - 0.05)));
-  // std::cout << "ig total " << ig_total_ << " ig target " << ig_target_ << std::endl;
+  ig_target_ = n_col * n_row * (farPlane / step) * getEntropy(log2(0.1 / (1.f - 0.1)));
+  LOG(INFO)<< "ig total " << ig_total_ << " ig target " << ig_target_ ;
   candidates_.resize(num_sampling_);
   DLOG(INFO) << "setup candidate view";
 }
@@ -290,7 +290,7 @@ int getExplorationPath(std::shared_ptr<Octree<T> > octree_ptr,
 
   int best_cand_idx = -1;
   bool use_curr_pose = true;
-  bool force_travelling = candidate_view.curr_pose_.information_gain < candidate_view.getTotalIG()*0.2;
+  bool force_travelling = candidate_view.curr_pose_.information_gain < candidate_view.getTargetIG();
   if (valid_path) {
     best_cand_idx = candidate_view.getBestCandidate();
     DLOG(INFO) << "[se/candview] best candidate is "
