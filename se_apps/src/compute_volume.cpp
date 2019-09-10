@@ -25,6 +25,7 @@ struct arguments {
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
   std::string filename;
   Eigen::Vector3f map_dim;
+  Eigen::Vector3f map_offset;
 };
 
 
@@ -39,11 +40,24 @@ struct arguments parse_arguments(int argc, char** argv) {
       args.map_dim.x() = atof(argv[2]);
       args.map_dim.y() = atof(argv[3]);
       args.map_dim.z() = atof(argv[4]);
+	  args.map_offset = Eigen::Vector3f::Constant(0.f);
+      break;
+
+    // Map filename, dimensions and offset supplied.
+    case 8:
+      args.filename = std::string(argv[1]);
+      args.map_dim.x()    = atof(argv[2]);
+      args.map_dim.y()    = atof(argv[3]);
+      args.map_dim.z()    = atof(argv[4]);
+      args.map_offset.x() = atof(argv[5]);
+      args.map_offset.y() = atof(argv[6]);
+      args.map_offset.z() = atof(argv[7]);
       break;
 
     // Show usage message.
     default:
-      std::cout << "Usage: " << argv[0] << " FILENAME DIM_X DIM_Y DIM_Z\n";
+      std::cout << "Usage: " << argv[0]
+          << " FILENAME DIM_X DIM_Y DIM_Z [OFFSET_X OFFSET_Y OFFSET_Z]\n";
       exit(EXIT_FAILURE);
   }
 
@@ -101,7 +115,7 @@ int main(int argc, char** argv) {
   float  occupied_voxel_volume;
   float  free_node_volume;
   float  occupied_node_volume;
-  compute_bounded_volume(*octree_, args.map_dim,
+  compute_bounded_volume(*octree_, args.map_dim, args.map_offset,
       free_voxel_volume, occupied_voxel_volume,
       free_node_volume, occupied_node_volume);
 

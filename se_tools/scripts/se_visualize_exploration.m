@@ -25,9 +25,14 @@ clear variables
 
 
 % Settings %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-dim_x = 10;
-dim_y = 20;
-dim_z = 3;
+world_names     = {'apartment', 'apartment_64', 'apartment_256', 'maze', 'powerplant'};
+world_dims_x    = [10  10  10  20         33];
+world_dims_y    = [20  20  20  20         31];
+world_dims_z    = [ 3   3   3   2.5       26];
+world_offsets_x = [ 0   0   0   0.018794   7.5];
+world_offsets_y = [ 0   0   0  -5.61      -8.5];
+world_offsets_z = [ 0   0   0   0          0];
+
 plot_path   = false;
 interactive = false;
 export_plot = true;
@@ -63,6 +68,33 @@ end
 
 
 
+function [filenames, world] = parse_arguments()
+	% Get the command line arguments.
+	args = argv();
+	if isempty(args) || length(args) < 3
+      name = program_invocation_name();
+	  fprintf('Usage: %s [-w WORLD] FILE1 [FILE2 ...]\n', name);
+	  fprintf('  Use bash globbing with * to select all files of interest, e.g.\n');
+	  fprintf('  %s map_1/map_2019-08-22_184424_*\n', name);
+      filenames = {};
+      world = '';
+	  return;
+	end
+
+	% Get the world name.
+    if strcmp(args{1}, '-w')
+      world = args{2};
+      args = args(3:end);
+    else
+      world = 'apartment';
+    end
+
+	% Sort the filenames.
+	filenames = sort(args);
+end
+
+
+
 % Main %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Get the path to the program used to evaluate maps.
 [script_dir, ~, ~] = fileparts(program_invocation_name());
@@ -70,23 +102,31 @@ voxelcounter_program = [script_dir ...
     '/../../build/Release/se_apps/se-denseslam-ofusion-compute-volume'];
 addpath(genpath([script_dir '/octave_functions']));
 
-% Get the command line arguments.
-args = argv();
-if isempty(args)
-  fprintf('Usage: %s FILE1 [FILE2 ...]\n', program_invocation_name());
-  fprintf('  Use bash globbing with * to select all files of interest, e.g.\n');
-  fprintf('  %s map_1/map_2019-08-22_184424_*\n', program_invocation_name());
-  return;
-end
-
 t = [];
 total_volume = [];
 voxel_volume = [];
 node_volume  = [];
 poses = {};
 
-% Sort the filenames.
-filenames = sort(args);
+% Parse command line arguments.
+[filenames, world] = parse_arguments();
+if isempty(filenames)
+  return;
+end
+% Find the world index.
+world_ind = find(ismember(world_names, world));
+if isempty(world_ind)
+	fprintf('Invalid world name: %s\n', world);
+	return;
+end
+% Get the world parameters.
+dim_x = world_dims_x(world_ind);
+dim_y = world_dims_y(world_ind);
+dim_z = world_dims_z(world_ind);
+off_x = world_offsets_x(world_ind);
+off_y = world_offsets_y(world_ind);
+off_z = world_offsets_z(world_ind);
+world_volume = dim_x * dim_y * dim_z;
 
 % Iterate over each file.
 for i = 1:length(filenames);
@@ -104,11 +144,15 @@ for i = 1:length(filenames);
   % This is a map, process.
   if strfind(filename, '.bin')
     % Evaluate the file.
-    [status, output] = system([voxelcounter_program ' ' filename ' ' ...
-        num2str(dim_x) ' ' num2str(dim_y) ' ' num2str(dim_z)]);
+	command = [voxelcounter_program ' ' filename ' ' ...
+        num2str(dim_x) ' ' num2str(dim_y) ' ' num2str(dim_z) ' ' ...
+        num2str(off_x) ' ' num2str(off_y) ' ' num2str(off_z)];
+    [status, output] = system(command);
 	if status ~= 0
-		fprintf('Error from %s\n', voxelcounter_program);
+		fprintf('Error from %s\n', command);
+		fprintf('Output -----\n');
 		fprintf('%s', output);
+		fprintf('------------\n');
 		continue;
 	end
 
@@ -163,23 +207,23 @@ plot(t, voxel_volume, 'ro-', 'LineWidth', lw);
 xlabel('Time (s)');
 ylabel('Explored volume (m^3)');
 legend('Total volume', 'Node volume', 'Voxel volume', 'Location', 'southeast');
-axis([0 10*60], [0 600]);
+axis([0 t(end) 0 world_volume]);
 
 if export_plot
-  directory = fileparts(args{1});
-  timestamp = get_pattern(timestamp_pattern, args{1});
+  directory = fileparts(filenames{1});
+  timestamp = get_pattern(timestamp_pattern, filenames{1});
   image_name = [directory '/' 'data_plot_' timestamp '.png'];
   print(image_name);
 end
 
 if export_data
-  directory = fileparts(args{1});
-  timestamp = get_pattern(timestamp_pattern, args{1});
+  directory = fileparts(filenames{1});
+  timestamp = get_pattern(timestamp_pattern, filenames{1});
   data_file_name = [directory '/' 'data_' timestamp '.csv'];
-    % The columns of the .csv file are:
-    % timestamp, volume of explored voxels, volume of explored nodes, total
-    % explored volume
-    csvwrite(data_file_name, [t' voxel_volume' node_volume' total_volume']);
+  % The columns of the .csv file are:
+  % timestamp, volume of explored voxels, volume of explored nodes, total
+  % explored volume
+  csvwrite(data_file_name, [t' voxel_volume' node_volume' total_volume']);
 end
 
 if plot_path && ~isempty(poses)

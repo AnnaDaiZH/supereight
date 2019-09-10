@@ -260,6 +260,7 @@ void crop_octree(se::Octree<T>& octree, const Eigen::Vector3f& dim) {
 template<typename T>
 void compute_bounded_volume(se::Octree<T>&         octree,
                             const Eigen::Vector3f& dim,
+                            const Eigen::Vector3f& offset,
                             float&                 free_voxel_volume,
                             float&                 occupied_voxel_volume,
                             float&                 free_node_volume,
@@ -268,10 +269,10 @@ void compute_bounded_volume(se::Octree<T>&         octree,
   // centered on [0 0 0]^T. Offset it so that it's centered inside the octree.
   // Increase the z offset so that the map's floor is halfway on the octree's z
   // axis.
-  const Eigen::Vector3f map_offset (octree.dim() / 2.f, octree.dim() / 2.f,
+  const Eigen::Vector3f center_offset (octree.dim() / 2.f, octree.dim() / 2.f,
       octree.dim() / 2.f + dim.z() / 2.f);
-  const Eigen::Vector3f min_pos_m = -dim / 2.f + map_offset;
-  const Eigen::Vector3f max_pos_m =  dim / 2.f + map_offset;
+  const Eigen::Vector3f min_pos_m = -dim / 2.f + center_offset + offset;
+  const Eigen::Vector3f max_pos_m =  dim / 2.f + center_offset + offset;
 
   //std::cout << dim.format(line_fmt) << " m\n";
   //std::cout << min_pos_m.format(line_fmt) << " m\n";
