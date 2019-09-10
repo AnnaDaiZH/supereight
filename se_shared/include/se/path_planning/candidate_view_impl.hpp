@@ -390,53 +390,60 @@ VecPose CandidateView<T>::getFinalPath(Candidate &candidate ) {
   VecPose path;
 // first add points between paths
   if(candidate.path.size()>2 ){
+    path.push_back(pose_);
     for (int i = 1; i < candidate.path.size(); i++) {
 
       DLOG(INFO) << "segment start " << candidate.path[i - 1].p.format(InLine) << " end "
       << candidate.path[i].p.format(InLine);
-     VecPose path_tmp;
-      if((candidate.path[i].p -candidate.path[i - 1].p).norm() > planning_config_.v_max*planning_config_.dt){
-         path_tmp = addPathSegments(candidate.path[i-1], candidate.path[i] );
-      } else{
+     // VecPose path_tmp;
+      // if(false){
+      //    path_tmp = addPathSegments(candidate.path[i-1], candidate.path[i] );
+      // } else{
 
-        path_tmp.push_back(candidate.path[i-1]);
-        path_tmp.push_back(candidate.path[i]);
-      }
+      //   path_tmp.push_back(candidate.path[i-1]);
+      //   path_tmp.push_back(candidate.path[i]);
+      // }
 
 
-      VecPose yaw_path;
-      if(planning_config_.yaw_optimization || i == candidate.path.size()-1){
-        getViewInformationGain(candidate.path[i]);
-      }else{
-      // look in the flight direction
-        float x_side = (candidate.path[i].p.x() - candidate.path[i-1].p.x());
-        float y_side = (candidate.path[i].p.y() - candidate.path[i-1].p.y());
-        float angle = (float) atan2(y_side, x_side);
-        wrapYawRad(angle);
-        candidate.path[i].q = toQuaternion(angle, 0,0);
-        yaw_path = getYawPath(candidate.path[i-1], candidate.path[i]);
-      }
+      // VecPose yaw_path;
+      // if(planning_config_.yaw_optimization || i == candidate.path.size()-1){
+      //   getViewInformationGain(candidate.path[i]);
+      // }else{
+      // // look in the flight direction
+      //   float x_side = (candidate.path[i].p.x() - candidate.path[i-1].p.x());
+      //   float y_side = (candidate.path[i].p.y() - candidate.path[i-1].p.y());
+      //   float angle = (float) atan2(y_side, x_side);
+      //   wrapYawRad(angle);
+      //   candidate.path[i].q = toQuaternion(angle, 0,0);
+      //   yaw_path = getYawPath(candidate.path[i-1], candidate.path[i]);
+      // }
 
-      if(i==1){
-        yaw_path =getYawPath(pose_, candidate.path[i]);
-      }else{
-        yaw_path =getYawPath(candidate.path[i-1], candidate.path[i]);
-      }
-      VecPose path_fused = fusePath(path_tmp, yaw_path);
+      // if(i==1){
+      //   yaw_path =getYawPath(pose_, candidate.path[i]);
+      // }else{
+      //   yaw_path =getYawPath(candidate.path[i-1], candidate.path[i]);
+      // }
+      // VecPose path_fused = fusePath(path_tmp, yaw_path);
+
         // push back the new path
-      for(const auto& pose : path_fused){
-        path.push_back(pose);
-      }
+
+      getViewInformationGain(candidate.path[i]);
+      path.push_back(candidate.path[i]);
+      // for(const auto& pose : path_fused){
+      //   path.push_back(pose);
+      // }
     }
   }else{
-    VecPose yaw_path = getYawPath(pose_, candidate.pose );
-    VecPose path_tmp;
-    if((candidate.pose.p -pose_.p).norm() > planning_config_.v_max*planning_config_.dt){
-       path_tmp = addPathSegments(pose_, candidate.pose );
-    }else{
-       path_tmp = candidate.path;
-    }
-    path = fusePath(path_tmp, yaw_path);
+    // VecPose yaw_path = getYawPath(pose_, candidate.pose );
+    // VecPose path_tmp;
+    // if((candidate.pose.p -pose_.p).norm() > planning_config_.v_max*planning_config_.dt){
+    //    path_tmp = addPathSegments(pose_, candidate.pose );
+    // }else{
+    //    path_tmp = candidate.path;
+    // }
+    // path = fusePath(path_tmp, yaw_path);
+    path.push_back(pose_);
+    path.push_back(candidate.pose);
   }
 
 //  std::cout << "[interpolateYaw] path size" << path.size() << std::endl;
