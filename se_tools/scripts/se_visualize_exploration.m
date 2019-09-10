@@ -25,27 +25,13 @@ clear variables
 
 
 % Settings %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Apartment
-dim_x = 10;
-dim_y = 20;
-dim_z = 3;
-off_x = 0;
-off_y = 0;
-off_z = 0;
-% Maze
-%dim_x = 20;
-%dim_y = 20;
-%dim_z = 2.5;
-%off_x = 0.018794;
-%off_y = -5.61;
-%off_z = 0;
-% Powerplant
-%dim_x = 33;
-%dim_y = 31;
-%dim_z = 26;
-%off_x = 7.5;
-%off_y = -8.5;
-%off_z = 0;
+world_names     = {'apartment', 'apartment_64', 'apartment_256', 'maze', 'powerplant'};
+world_dims_x    = [10  10  10  20         33];
+world_dims_y    = [20  20  20  20         31];
+world_dims_z    = [ 3   3   3   2.5       26];
+world_offsets_x = [ 0   0   0   0.018794   7.5];
+world_offsets_y = [ 0   0   0  -5.61      -8.5];
+world_offsets_z = [ 0   0   0   0          0];
 
 plot_path   = false;
 interactive = false;
@@ -86,14 +72,22 @@ function [filenames, world] = parse_arguments()
 	% Get the command line arguments.
 	args = argv();
 	if isempty(args)
-	  fprintf('Usage: %s FILE1 [FILE2 ...]\n', program_invocation_name());
+      name = program_invocation_name();
+	  fprintf('Usage: %s [-w WORLD] FILE1 [FILE2 ...]\n', name);
 	  fprintf('  Use bash globbing with * to select all files of interest, e.g.\n');
-	  fprintf('  %s map_1/map_2019-08-22_184424_*\n', program_invocation_name());
+	  fprintf('  %s map_1/map_2019-08-22_184424_*\n', name);
+      filenames = {};
+      world = '';
 	  return;
 	end
 
 	% Get the world name.
-	world = 'apartment';
+    if strcmp(args{1}, '-w')
+      world = args{2};
+      args = args(3:end);
+    else
+      world = 'apartment';
+    end
 
 	% Sort the filenames.
 	filenames = sort(args);
@@ -116,6 +110,22 @@ poses = {};
 
 % Parse command line arguments.
 [filenames, world] = parse_arguments();
+if isempty(filenames)
+  return;
+end
+% Find the world index.
+world_ind = find(ismember(world_names, world));
+if isempty(world_ind)
+	world_ind = 1;
+end
+% Get the world parameters.
+dim_x = world_dims_x(world_ind);
+dim_y = world_dims_y(world_ind);
+dim_z = world_dims_z(world_ind);
+off_x = world_offsets_x(world_ind);
+off_y = world_offsets_y(world_ind);
+off_z = world_offsets_z(world_ind);
+world_volume = dim_x * dim_y * dim_z;
 
 % Iterate over each file.
 for i = 1:length(filenames);
@@ -193,7 +203,7 @@ plot(t, voxel_volume, 'ro-', 'LineWidth', lw);
 xlabel('Time (s)');
 ylabel('Explored volume (m^3)');
 legend('Total volume', 'Node volume', 'Voxel volume', 'Location', 'southeast');
-axis([0 10*60], [0 600]);
+axis([0 15*60], [0 world_volume]);
 
 if export_plot
   directory = fileparts(filenames{1});
@@ -206,10 +216,10 @@ if export_data
   directory = fileparts(filenames{1});
   timestamp = get_pattern(timestamp_pattern, filenames{1});
   data_file_name = [directory '/' 'data_' timestamp '.csv'];
-    % The columns of the .csv file are:
-    % timestamp, volume of explored voxels, volume of explored nodes, total
-    % explored volume
-    csvwrite(data_file_name, [t' voxel_volume' node_volume' total_volume']);
+  % The columns of the .csv file are:
+  % timestamp, volume of explored voxels, volume of explored nodes, total
+  % explored volume
+  csvwrite(data_file_name, [t' voxel_volume' node_volume' total_volume']);
 end
 
 if plot_path && ~isempty(poses)
