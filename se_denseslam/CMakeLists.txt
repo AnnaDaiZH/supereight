@@ -67,7 +67,6 @@ foreach (field_type ${SUPEREIGHT_FIELD_TYPES})
     target_link_libraries(${lib_name} ${libraries}
             ${OMPL_LIBRARIES}
             ${GLOG_LIBRARIES}
-            ${YAML_CPP_LIBRARIES}
             )
 
     target_compile_definitions(${lib_name} PUBLIC ${field_type_macro})

@@ -36,13 +36,6 @@ install(
 # Populate the list of libraries that are part of se-shared.
 list(APPEND SUPEREIGHT_SHARED_LIBS lodepng)
 
-add_executable(ompl-demo src/StateSampling.cpp)
-
-target_include_directories(ompl-demo PUBLIC ${OMPL_INCLUDE_DIRS} ${EIGEN3_INCLUDE_DIR})
-target_link_libraries(ompl-demo
-        ${OMPL_LIBRARIES}
-)
-
 
 # Install the headers for all libraries in se-shared.
 install(
