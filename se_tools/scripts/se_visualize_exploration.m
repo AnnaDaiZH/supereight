@@ -71,7 +71,7 @@ end
 function [filenames, world] = parse_arguments()
 	% Get the command line arguments.
 	args = argv();
-	if isempty(args)
+	if isempty(args) || length(args) < 3
       name = program_invocation_name();
 	  fprintf('Usage: %s [-w WORLD] FILE1 [FILE2 ...]\n', name);
 	  fprintf('  Use bash globbing with * to select all files of interest, e.g.\n');
@@ -116,7 +116,8 @@ end
 % Find the world index.
 world_ind = find(ismember(world_names, world));
 if isempty(world_ind)
-	world_ind = 1;
+	fprintf('Invalid world name: %s\n', world);
+	return;
 end
 % Get the world parameters.
 dim_x = world_dims_x(world_ind);
@@ -143,12 +144,15 @@ for i = 1:length(filenames);
   % This is a map, process.
   if strfind(filename, '.bin')
     % Evaluate the file.
-    [status, output] = system([voxelcounter_program ' ' filename ' ' ...
+	command = [voxelcounter_program ' ' filename ' ' ...
         num2str(dim_x) ' ' num2str(dim_y) ' ' num2str(dim_z) ' ' ...
-        num2str(off_x) ' ' num2str(off_y) ' ' num2str(off_z)]);
+        num2str(off_x) ' ' num2str(off_y) ' ' num2str(off_z)];
+    [status, output] = system(command);
 	if status ~= 0
-		fprintf('Error from %s\n', voxelcounter_program);
+		fprintf('Error from %s\n', command);
+		fprintf('Output -----\n');
 		fprintf('%s', output);
+		fprintf('------------\n');
 		continue;
 	end
 
