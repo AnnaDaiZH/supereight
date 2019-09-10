@@ -112,6 +112,11 @@ bool CollisionCheckerV<FieldType>::isVoxelFree(const Eigen::Vector3i &point_v) c
   }
   octree_ptr_->fetch_octant(point_v.x(), point_v.y(), point_v.z(), node, is_voxel_block);
   if (is_voxel_block) {
+    if(node == nullptr){
+      LOG(INFO) << "NODE node null ptr but is block";
+      return false;
+    }
+
     block = static_cast<se::VoxelBlock<FieldType> *> (node);
     if (block->data(point_v).x <= THRESH_FREE_LOG) {
       // DLOG(INFO) << "free at "
@@ -127,9 +132,6 @@ bool CollisionCheckerV<FieldType>::isVoxelFree(const Eigen::Vector3i &point_v) c
 
   } else if(octree_ptr_->isRoot(node)){
     LOG(INFO) << "NODE root ";
-    return false;
-  } else if(node == nullptr && is_voxel_block){
-    LOG(INFO) << "NODE node null ptr but is block";
     return false;
   } else if( node == nullptr && !is_voxel_block){
     LOG(INFO) << "NODE node null ptr but not block ";

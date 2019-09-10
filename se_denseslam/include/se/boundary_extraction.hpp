@@ -32,11 +32,8 @@ static inline void insertBlocksToMap(set3i &blocks_map, set3i *blocks) {
 
 static inline void removeFromSet(set3i &blocks_map, set3i *blocks_to_remove){
   if(blocks_to_remove->size() == 0 || blocks_map.size()==0) return;
-  for(auto it = blocks_to_remove->begin() ; it != blocks_to_remove->end();){
-    if(!blocks_map.erase(*it)){
-      it++;
-    }
-    // find a way to delete
+  for(const auto & val : *blocks_to_remove){
+     blocks_map.erase(val);
   }
 }
 
