@@ -25,9 +25,28 @@ clear variables
 
 
 % Settings %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Apartment
 dim_x = 10;
 dim_y = 20;
 dim_z = 3;
+off_x = 0;
+off_y = 0;
+off_z = 0;
+% Maze
+%dim_x = 20;
+%dim_y = 20;
+%dim_z = 2.5;
+%off_x = 0.018794;
+%off_y = -5.61;
+%off_z = 0;
+% Powerplant
+%dim_x = 33;
+%dim_y = 31;
+%dim_z = 26;
+%off_x = 7.5;
+%off_y = -8.5;
+%off_z = 0;
+
 plot_path   = false;
 interactive = false;
 export_plot = true;
@@ -105,7 +124,8 @@ for i = 1:length(filenames);
   if strfind(filename, '.bin')
     % Evaluate the file.
     [status, output] = system([voxelcounter_program ' ' filename ' ' ...
-        num2str(dim_x) ' ' num2str(dim_y) ' ' num2str(dim_z)]);
+        num2str(dim_x) ' ' num2str(dim_y) ' ' num2str(dim_z) ' ' ...
+        num2str(off_x) ' ' num2str(off_y) ' ' num2str(off_z)]);
 	if status ~= 0
 		fprintf('Error from %s\n', voxelcounter_program);
 		fprintf('%s', output);
