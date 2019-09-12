@@ -501,7 +501,7 @@ bool DenseSLAMSystem::integration(const Eigen::Vector4f &k,
         // std::cout << "map bounds " << lower_map_bound_v_ << " " << upper_map_bound_v_;
       // }
       DLOG(INFO) << "[se/denseslam] free_map_  size  " << free_map_.size() ;
-      DLOG(INFO) << "[se/denseslam] frontier_map_ size " << frontier_map_.size() ;
+      LOG(INFO) << "[se/denseslam] frontier_map_ size " << frontier_map_.size() ;
     }
 
     // if(frame % 15 == 0) {
