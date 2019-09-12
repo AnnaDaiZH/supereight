@@ -154,7 +154,7 @@ CandidateView<T>::CandidateView(const std::shared_ptr<Octree<T> > octree_ptr,
   int n_col = planning_config.fov_vert / planning_config.dphi;
   int n_row = planning_config.fov_hor / planning_config.dtheta;
   ig_total_ = n_col * n_row * (farPlane / step) * getEntropy(0);
-  ig_curr_view_ = n_col * n_row * (farPlane / step) * getEntropy(log2(0.2 / (1.f - 0.2)));
+  ig_curr_view_ = n_col * n_row * (farPlane / step) * getEntropy(log2(0.25 / (1.f - 0.25)));
   ig_target_ = n_col * n_row * (farPlane / step) * getEntropy(log2(0.1 / (1.f - 0.1)));
   LOG(INFO)<< "ig total " << ig_total_ << " ig target " << ig_target_ ;
   candidates_.resize(num_sampling_);

@@ -256,6 +256,7 @@ std::pair<float, float> CandidateView<T>::getRayInformationGain(const Eigen::Vec
           break;
         const auto  data = octree_ptr_->get(pos_v);
         prob_log = octree_ptr_->interp(pos_v.cast<float>(), select_occupancy);
+        if(prob_log ==0.f && data.y != 0.f) continue;
         ig_entropy += getEntropy(prob_log);
 
 // next step along the ray hits a surface with a secure threshold return

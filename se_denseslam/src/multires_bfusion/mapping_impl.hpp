@@ -357,8 +357,13 @@ struct multires_block_update {
           visible = true;
           const Eigen::Vector2i px = pixel.cast<int>();
            float depthSample = depth[px.x() + depth.width() * px.y()];
+           auto data = block->data(pix, scale);
           // continue on invalid depth measurement
-          if (depthSample <= 0) continue;
+          if (depthSample <= 0) {
+            data.y = frame;
+            block->data(pix, scale, data);
+            continue;
+          }
 
           // Compute the occupancy probability for the current measurement.
           const float diff = (pos.z() - depthSample);
@@ -369,7 +374,7 @@ struct multires_block_update {
             continue;
           sample = se::math::clamp(sample, 0.03f, 0.97f);
 
-          auto data = block->data(pix, scale);
+
           float prev_occ = se::math::getProbFromLog(data.x);
           const bool is_voxel = true;
           const key_t morton_code_child = block->code_;

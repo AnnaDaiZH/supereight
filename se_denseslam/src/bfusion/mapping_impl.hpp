@@ -230,6 +230,8 @@ struct bfusion_update {
     const key_t morton_code_child = handler.get_morton_code();
     // invalid depth measurement
     if (depthSample <= 0) {
+      data.y = timestamp;
+      handler.set(data);
       return;
     }
 
