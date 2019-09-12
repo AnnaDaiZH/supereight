@@ -91,7 +91,7 @@ static void setStateToFree(Octree<FieldType> &map, mapvec3i *block_voxel_map) {
       VoxelBlockHandler<FieldType> handler = {block_ptr, voxel};
       auto data = handler.get();
       if (data.st == voxel_state::kUnknown || data.st == voxel_state::kFrontier) {
-        data.st = voxel_state::kFree;
+        // data.st = voxel_state::kFree;
         data.x = THRESH_FREE_LOG;
         handler.set(data);
       }

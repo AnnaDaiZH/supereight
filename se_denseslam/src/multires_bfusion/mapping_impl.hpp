@@ -244,7 +244,7 @@ bool isFrontier(const se::Octree<OFusion> &map,
         && (voxel.z() / BLOCK_SIDE) == (face_voxel.z() / BLOCK_SIDE)) {
       // CASE 1: same voxel block
       // std::cout << "prob " << _block->data(face_voxel).x << " state " << _block->data(face_voxel).st << std::endl; _block->data(face_voxel).x == 0.f &&
-      if (block->data(face_voxel).x == 0.0f)
+      if (block->data(face_voxel).st == voxel_state::kUnknown)
         return true;
     } else {
       // not same voxel block => check if neighbour is a voxel block
@@ -255,7 +255,7 @@ bool isFrontier(const se::Octree<OFusion> &map,
       if (is_voxel_block) {
         se::VoxelBlock<OFusion> *block = static_cast<se::VoxelBlock<OFusion> *> (node);
         // std::cout << "prob " << block->data(face_voxel).x << " state " << block->data(face_voxel).st << std::endl;
-        if (block->data(face_voxel).x == 0.0f)
+        if (block->data(face_voxel).st == voxel_state::kUnknown)
           return true;
 
         // CASE 3: not same voxelblock but belongs to a node at leaf level - 1
@@ -356,14 +356,14 @@ struct multires_block_update {
             continue;
           visible = true;
           const Eigen::Vector2i px = pixel.cast<int>();
-          const float depthSample = depth[px.x() + depth.width() * px.y()];
+           float depthSample = depth[px.x() + depth.width() * px.y()];
           // continue on invalid depth measurement
           if (depthSample <= 0) continue;
 
           // Compute the occupancy probability for the current measurement.
           const float diff = (pos.z() - depthSample);
           float sigma =
-              se::math::clamp(mu * se::math::sq(pos.z()), 0.08f , 0.15f);
+              se::math::clamp(mu * se::math::sq(pos.z()), 0.2f , 0.3f);
           float sample = H(diff / sigma, pos.z());
           if (sample == 0.5f)
             continue;
@@ -375,8 +375,8 @@ struct multires_block_update {
           const key_t morton_code_child = block->code_;
           // Update the occupancy probability
 
-          const double delta_t = (double) (frame - data.y) / 30;
-          data.x = applyWindow(data.x, SURF_BOUNDARY, delta_t, CAPITAL_T);
+          // const double delta_t = (double) (frame - data.y) / 30;
+          // data.x = applyWindow(data.x, SURF_BOUNDARY, delta_t, CAPITAL_T);
           data.x = se::math::clamp(updateLogs(data.x, sample), BOTTOM_CLAMP, TOP_CLAMP);
           data.y = frame;
 

@@ -90,8 +90,15 @@ static inline bool in_frustum(const VoxelBlockType *v,
           * (offsets.colwise() + v->coordinates().homogeneous()).template cast<float>();
   v_camera.row(0).array() /= v_camera.row(2).array();
   v_camera.row(1).array() /= v_camera.row(2).array();
-  return ((v_camera.row(0).array() >= 0.f && v_camera.row(0).array() < frameSize.x())
-      && (v_camera.row(1).array() >= 0.f && v_camera.row(1).array() < frameSize.y())).any();
+  return ((v_camera(0,0) >= 0.f && v_camera(0,0)< frameSize.x() && v_camera(1,0) >= 0.f&& v_camera(1,0) < frameSize.y() ) ||
+          (v_camera(0,1) >= 0.f && v_camera(0,1)< frameSize.x() && v_camera(1,1) >= 0.f&& v_camera(1,1) < frameSize.y() ) ||
+          (v_camera(0,2) >= 0.f && v_camera(0,2)< frameSize.x() && v_camera(1,2) >= 0.f&& v_camera(1,2) < frameSize.y() ) ||
+          (v_camera(0,3) >= 0.f && v_camera(0,3)< frameSize.x() && v_camera(1,3) >= 0.f&& v_camera(1,3) < frameSize.y() ) ||
+          (v_camera(0,4) >= 0.f && v_camera(0,4)< frameSize.x() && v_camera(1,4) >= 0.f&& v_camera(1,4) < frameSize.y() ) ||
+          (v_camera(0,5) >= 0.f && v_camera(0,5)< frameSize.x() && v_camera(1,5) >= 0.f&& v_camera(1,5) < frameSize.y() ) ||
+          (v_camera(0,6) >= 0.f && v_camera(0,6)< frameSize.x() && v_camera(1,6) >= 0.f&& v_camera(1,6) < frameSize.y() ) ||
+          (v_camera(0,7) >= 0.f && v_camera(0,7)< frameSize.x() && v_camera(1,7) >= 0.f&& v_camera(1,7) < frameSize.y() ));
+
 }
 
 template<typename ValueType, typename P>

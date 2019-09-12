@@ -247,8 +247,8 @@ struct bfusion_update {
     // in log2
     // Update the occupancy probability
 
-    const double delta_t = timestamp - data.y;
-    data.x = applyWindow(data.x, SURF_BOUNDARY, delta_t, CAPITAL_T);
+    // const double delta_t = timestamp - data.y;
+    // data.x = applyWindow(data.x, SURF_BOUNDARY, delta_t, CAPITAL_T);
     data.x = se::math::clamp(updateLogs(data.x, sample), BOTTOM_CLAMP, TOP_CLAMP);
     data.y = timestamp;
     float prob = se::math::getProbFromLog(data.x);

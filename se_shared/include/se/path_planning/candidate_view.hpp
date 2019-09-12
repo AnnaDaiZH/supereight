@@ -94,7 +94,7 @@ class CandidateView {
 
   int getExplorationStatus() const { return exploration_status_; }
 
-  float getTargetIG() const { return ig_target_; }
+  float getCurrIGThreshold() const { return ig_curr_view_; }
   float getTotalIG() const {return ig_total_; }
   int getNumValidCandidates() const { return num_cands_; }
 
@@ -110,6 +110,7 @@ class CandidateView {
   float occ_thresh_ = 0.f;
   float ig_total_;
   float ig_target_;
+  float ig_curr_view_;
   int dtheta_;
   int dphi_;
   float step_;
@@ -153,6 +154,7 @@ CandidateView<T>::CandidateView(const std::shared_ptr<Octree<T> > octree_ptr,
   int n_col = planning_config.fov_vert / planning_config.dphi;
   int n_row = planning_config.fov_hor / planning_config.dtheta;
   ig_total_ = n_col * n_row * (farPlane / step) * getEntropy(0);
+  ig_curr_view_ = n_col * n_row * (farPlane / step) * getEntropy(log2(0.2 / (1.f - 0.2)));
   ig_target_ = n_col * n_row * (farPlane / step) * getEntropy(log2(0.1 / (1.f - 0.1)));
   LOG(INFO)<< "ig total " << ig_total_ << " ig target " << ig_target_ ;
   candidates_.resize(num_sampling_);
@@ -206,6 +208,7 @@ int getExplorationPath(std::shared_ptr<Octree<T> > octree_ptr,
 
     if(counter == 20 ){
       LOG(INFO) << "no candidates ";
+
       break;
     }
     counter++;
@@ -253,6 +256,7 @@ int getExplorationPath(std::shared_ptr<Octree<T> > octree_ptr,
           candidate_view.candidates_[i].planning_solution_status = path_planned;
 
           if(path_planned >0){
+            valid_path = true;
             LOG(INFO) << "Found a path for cand " << i;
             break;
           }else{
@@ -290,7 +294,7 @@ int getExplorationPath(std::shared_ptr<Octree<T> > octree_ptr,
 
   int best_cand_idx = -1;
   bool use_curr_pose = true;
-  bool force_travelling = candidate_view.curr_pose_.information_gain < candidate_view.getTargetIG();
+  bool force_travelling = candidate_view.curr_pose_.information_gain < candidate_view.getCurrIGThreshold();
   if (valid_path) {
     best_cand_idx = candidate_view.getBestCandidate();
     DLOG(INFO) << "[se/candview] best candidate is "
@@ -323,7 +327,7 @@ int getExplorationPath(std::shared_ptr<Octree<T> > octree_ptr,
   }
 
   for (const auto &pose : path_tmp) {
-    DLOG(INFO) << "cand view " << (pose.p * res).format(InLine) << " " << pose.q.w() << " "
+    LOG(INFO) << "cand view " << (pose.p * res).format(InLine) << " " << pose.q.w() << " "
                << pose.q.vec().format(InLine);
     path.push_back(pose);
   }
