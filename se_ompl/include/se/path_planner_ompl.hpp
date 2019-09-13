@@ -330,7 +330,7 @@ int PathPlannerOmpl<FieldType>::planPath(const Eigen::Vector3i &start_v,
       // path.printAsMatrix(std::cout);
       // const double dist_to_goal = ss_->getProblemDefinition()->getSolutionDifference();
       // const double dist_to_goal = ompl_setup_.getProblemDefinition()->getSolutionDifference();
-      // DLOG(INFO) << "solution difference " << dist_to_goal;
+      // LOG(INFO) << "solution difference " << dist_to_goal;
 
 //      path.printAsMatrix(myfile);
 //

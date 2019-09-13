@@ -256,7 +256,7 @@ std::pair<float, float> CandidateView<T>::getRayInformationGain(const Eigen::Vec
           break;
         const auto  data = octree_ptr_->get(pos_v);
         prob_log = octree_ptr_->interp(pos_v.cast<float>(), select_occupancy);
-        if(prob_log ==0.f && data.y != 0.f) continue;
+        // if(prob_log ==0.f && data.y != 0.f) continue;
         ig_entropy += getEntropy(prob_log);
 
 // next step along the ray hits a surface with a secure threshold return
@@ -340,7 +340,7 @@ void CandidateView<T>::calculateUtility(Candidate &candidate) {
   wrapYawRad(yaw_diff);
   float t_yaw = fabs(yaw_diff / max_yaw_rate);
 
-  candidate.utility = candidate.information_gain / (t_yaw + t_path);
+  candidate.utility = candidate.information_gain / (t_yaw + 0.7* t_path);
 
   if( t_path ==0 && t_yaw < 0.001){
     candidate.utility = 0;
