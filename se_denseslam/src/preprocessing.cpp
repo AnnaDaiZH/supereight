@@ -6,7 +6,7 @@
  This code is licensed under the MIT License.
 
 
- Copyright 2016 Emanuele Vespa, Imperial College London 
+ Copyright 2016 Emanuele Vespa, Imperial College London
 
  Redistribution and use in source and binary forms, with or without
  modification, are permitted provided that the following conditions are met:
@@ -31,7 +31,7 @@
  SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
  CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
  OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
- OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
+ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 #include <se/timings.h>
 #include <se/utils/math_utils.h>
@@ -53,7 +53,7 @@ void bilateralFilterKernel(se::Image<float>& out, const se::Image<float>& in,
 		int y;
 		float e_d_squared_2 = e_d * e_d * 2;
 #pragma omp parallel for \
-	    shared(out),private(y)   
+	    shared(out),private(y)
 		for (y = 0; y < height; y++) {
 			for (int x = 0; x < width; x++) {
 				unsigned int pos = x + y * width;
@@ -88,7 +88,7 @@ void bilateralFilterKernel(se::Image<float>& out, const se::Image<float>& in,
 		TOCK("bilateralFilterKernel", width * height);
 }
 
-  void depth2vertexKernel(se::Image<Eigen::Vector3f>& vertex, 
+  void depth2vertexKernel(se::Image<Eigen::Vector3f>& vertex,
                          const se::Image<float>& depth,
                          const Eigen::Matrix4f& invK) {
 	TICK();
@@ -111,7 +111,7 @@ void bilateralFilterKernel(se::Image<float>& out, const se::Image<float>& in,
 }
 
 template <bool NegY>
-void vertex2normalKernel(se::Image<Eigen::Vector3f>&  out, 
+void vertex2normalKernel(se::Image<Eigen::Vector3f>&  out,
     const se::Image<Eigen::Vector3f>& in) {
   TICK();
   int x, y;
@@ -158,7 +158,7 @@ void vertex2normalKernel(se::Image<Eigen::Vector3f>&  out,
   TOCK("vertex2normalKernel", width * height);
 }
 
-void mm2metersKernel(se::Image<float>& out, const unsigned short* in, 
+void mm2metersKernel(se::Image<float>& out, const unsigned short* in,
     const Eigen::Vector2i& inputSize) {
 	TICK();
 	// Check for unsupported conditions
@@ -187,7 +187,7 @@ void mm2metersKernel(se::Image<float>& out, const unsigned short* in,
 	TOCK("mm2metersKernel", outSize.x * outSize.y);
 }
 
-void halfSampleRobustImageKernel(se::Image<float>& out, 
+void halfSampleRobustImageKernel(se::Image<float>& out,
                                 const se::Image<float>& in,
                                 const float e_d, const int r) {
 	if ((in.width() / out.width() != 2) || ( in.height() / out.height() != 2)) {
@@ -208,9 +208,9 @@ void halfSampleRobustImageKernel(se::Image<float>& out,
 			const float center = in[centerPixel.x() + centerPixel.y() * in.width()];
 			for (int i = -r + 1; i <= r; ++i) {
 				for (int j = -r + 1; j <= r; ++j) {
-          Eigen::Vector2i cur = centerPixel + Eigen::Vector2i(j, i); 
-          se::math::clamp(cur, 
-                Eigen::Vector2i::Constant(0), 
+          Eigen::Vector2i cur = centerPixel + Eigen::Vector2i(j, i);
+          se::math::clamp(cur,
+                Eigen::Vector2i::Constant(0),
                 Eigen::Vector2i(2 * out.width() - 1, 2 * out.height() - 1));
 					float current = in[cur.x() + cur.y() * in.width()];
 					if (fabsf(current - center) < e_d) {
@@ -224,3 +224,41 @@ void halfSampleRobustImageKernel(se::Image<float>& out,
 	}
 	TOCK("halfSampleRobustImageKernel", outSize.x * outSize.y);
 }
+
+void downsampleKernel(const uint8_t*              inRGB,
+                      const Eigen::Vector2i&      inputSize,
+                      se::Image<Eigen::Vector3f>& out) {
+  TICK();
+  // Check for unsupported conditions
+  if ((inputSize.x() < out.width()) || inputSize.y() < out.height()) {
+    std::cerr << "Invalid ratio." << std::endl;
+    exit(1);
+  }
+  if ((inputSize.x() % out.width() != 0)
+      || (inputSize.y() % out.height() != 0)) {
+    std::cerr << "Invalid ratio." << std::endl;
+    exit(1);
+  }
+  if ((inputSize.x() / out.width() != inputSize.y() / out.height())) {
+    std::cerr << "Invalid ratio." << std::endl;
+    exit(1);
+  }
+
+  int ratio = inputSize.x() / out.width();
+  int y;
+#pragma omp parallel for \
+  shared(out), private(y)
+  for (y = 0; y < out.height(); y++) {
+    for (int x = 0; x < out.width(); x++) {
+      // Get the RGB values (xyz) for each pixel
+      out[x + out.width() * y].x()
+        = inRGB[3 * (x * ratio + inputSize.x() * y * ratio)] / 255.0;
+      out[x + out.width() * y].y()
+        = inRGB[3 * (x * ratio + inputSize.x() * y * ratio) + 1] / 255.0;
+      out[x + out.width() * y].z()
+        = inRGB[3 * (x * ratio + inputSize.x() * y * ratio) + 2] / 255.0;
+    }
+  }
+  TOCK("downsampleKernel", outSize.x * outSize.y);
+}
+

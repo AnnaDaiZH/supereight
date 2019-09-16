@@ -105,6 +105,7 @@ class DenseSLAMSystem {
   AlignedImage3f input_vertex_;
   AlignedImage3f   input_normal_;
   se::Image<float> float_depth_;
+  se::Image<Eigen::Vector3f> rgb_;
   std::vector<TrackData> tracking_result_;
   Eigen::Matrix4f old_pose_;
   Eigen::Matrix4f raycast_pose_;
@@ -182,6 +183,11 @@ class DenseSLAMSystem {
                      const Eigen::Vector2i &inputSize,
                      const bool filterInput);
 
+  bool preprocessing(const unsigned short*  inputDepth,
+                    const Eigen::Vector2i& depthInputSize,
+                    const uint8_t*         inputRGB,
+                    const Eigen::Vector2i& rgbInputSize,
+                    const bool             filterInput);
   /**
    * Update the camera pose. Create a 3D reconstruction from the current
    * depth frame and compute a transformation using ICP. The 3D

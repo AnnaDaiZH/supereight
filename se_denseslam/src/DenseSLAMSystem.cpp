@@ -80,7 +80,8 @@ DenseSLAMSystem::DenseSLAMSystem(const Eigen::Vector2i &inputSize,
     computation_size_(inputSize),
     vertex_(computation_size_.x(), computation_size_.y()),
     normal_(computation_size_.x(), computation_size_.y()),
-    float_depth_(computation_size_.x(), computation_size_.y()) {
+    float_depth_(computation_size_.x(), computation_size_.y()),
+    rgb_(computation_size_.x(), computation_size_.y()) {
   planning_config_ = planning_config;
   this->init_pose_ = initPose.block<3, 1>(0, 3);
   this->volume_dimension_ = volumeDimensions;
@@ -147,6 +148,27 @@ bool DenseSLAMSystem::preprocessing(const unsigned short *inputDepth,
   }
   return true;
 }
+
+
+bool DenseSLAMSystem::preprocessing(const unsigned short*  inputDepth,
+                                    const Eigen::Vector2i& depthInputSize,
+                                    const uint8_t*         inputRGB,
+                                    const Eigen::Vector2i& rgbInputSize,
+                                    const bool             filterInput) {
+  // Downsample and add the depth frame to the pipeline
+  mm2metersKernel(float_depth_, inputDepth, depthInputSize);
+  if (filterInput) {
+    bilateralFilterKernel(scaled_depth_[0], float_depth_, gaussian_,
+        e_delta, radius);
+  } else {
+    std::memcpy(scaled_depth_[0].data(), float_depth_.data(),
+        sizeof(float) * computation_size_.x() * computation_size_.y());
+  }
+  // Downsample and add the rgb and grayscale frames to the pipeline
+  downsampleKernel(inputRGB, rgbInputSize, rgb_);
+  return true;
+}
+
 
 bool DenseSLAMSystem::tracking(const Eigen::Vector4f &k,
                                float icp_threshold,

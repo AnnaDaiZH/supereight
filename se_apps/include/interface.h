@@ -796,7 +796,7 @@ class OpenNIDepthReader: public DepthReader {
 
     Eigen::Vector4f getK() {
       return Eigen::Vector4f::Constant(0.f);
-    } 
+    }
 
     uint2 getinputSize() {
       return make_uint2(0);
