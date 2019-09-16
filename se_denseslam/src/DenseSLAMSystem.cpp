@@ -486,6 +486,7 @@ bool DenseSLAMSystem::integration(const Eigen::Vector4f &k,
       float timestamp = (1.f / 30.f) * frame;
       struct bfusion_update funct(float_depth_.data(),
                                   Eigen::Vector2i(computation_size_.x(), computation_size_.y()),
+                                  rgb_,
                                   mu,
                                   timestamp,
                                   voxelsize,
@@ -506,7 +507,7 @@ bool DenseSLAMSystem::integration(const Eigen::Vector4f &k,
 
       set3i* frontier_blocks_update = new set3i;
       se::multires::ofusion::integrate(*volume_._map_index, Tcw, K, voxelsize, Eigen::Vector3f::Constant(0.5),
-                                       float_depth_, mu, frame, ceiling_height_v, ground_height_v, position, updated_blocks, free_blocks,
+                                       float_depth_, rgb_, mu, frame, ceiling_height_v, ground_height_v, position, updated_blocks, free_blocks,
                                        frontier_blocks, frontier_blocks_update);
 
 
@@ -596,15 +597,15 @@ void DenseSLAMSystem::renderVolume(unsigned char *out,
     renderVolumeKernel(volume_,
                        out,
                        outputSize,
-                       *(this->viewPose_) * getInverseCameraMatrix(k),
+                       *(this->viewPose_) * Tbc_* getInverseCameraMatrix(k),
                        nearPlane,
                        farPlane * 2.0f,
                        mu_,
                        step,
                        largestep,
-                       this->viewPose_->topRightCorner<3, 1>(),
+                       (*(this->viewPose_) * Tbc_).topRightCorner<3, 1>(),
                        ambient,
-                       !(this->viewPose_->isApprox(raycast_pose_)),
+                       true,
                        vertex_,
                        normal_);
   }

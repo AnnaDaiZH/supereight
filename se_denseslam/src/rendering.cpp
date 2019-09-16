@@ -6,7 +6,7 @@
  This code is licensed under the MIT License.
 
 
- Copyright 2016 Emanuele Vespa, Imperial College London 
+ Copyright 2016 Emanuele Vespa, Imperial College London
 
  Redistribution and use in source and binary forms, with or without
  modification, are permitted provided that the following conditions are met:
@@ -31,7 +31,7 @@
  SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
  CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
  OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
- OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
+ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 #include <se/utils/math_utils.h>
 #include <se/commons.h>
@@ -269,23 +269,37 @@ void renderVolumeKernel(const Volume<T> &volume,
 
         if (surfNorm.x() != INVALID && surfNorm.norm() > 0) {
           const Eigen::Vector3f diff = (test - light).normalized();
-          const Eigen::Vector3f
-              dir = Eigen::Vector3f::Constant(fmaxf(surfNorm.normalized().dot(diff), 0.f));
-          Eigen::Vector3f col = dir + ambient;
+          const Eigen::Vector3f dir = Eigen::Vector3f::Constant(fmaxf(surfNorm.normalized().dot(diff), 0.f));
+		    const float interp_r = volume.interp(hit.head<3>(),
+                [](const auto &val) { return val.r; });
+            const float interp_g = volume.interp(hit.head<3>(),
+                [](const auto &val) { return val.g; });
+            const float interp_b = volume.interp(hit.head<3>(),
+                [](const auto &val) { return val.b; });
+            const Eigen::Vector3f rgb = Eigen::Vector3f(interp_r, interp_g,
+                interp_b);
+			Eigen::Vector3f col = (dir.array() * rgb.array()).matrix() + ambient;
+			//Eigen::Vector3f col = dir + ambient;
           se::math::clamp(col, Eigen::Vector3f::Constant(0.f), Eigen::Vector3f::Constant(1.f));
           col *= 255.f;
           out[idx + 0] = col.x();
           out[idx + 1] = col.y();
           out[idx + 2] = col.z();
-          out[idx + 3] = 0;
+          out[idx + 3] = 255;
         } else {
           out[idx + 0] = 0;
           out[idx + 1] = 0;
           out[idx + 2] = 0;
-          out[idx + 3] = 0;
+          out[idx + 3] = 255;
         }
       }
     }
+
+    //static int count = 0;
+    //std::string fname = "/home/srl/img_" + std::to_string(count) + ".png";
+    //lodepng_encode32_file(fname.c_str(),
+    //    out, depthSize.x(), depthSize.y());
+    //count++;
   TOCK("renderVolumeKernel", depthSize.x * depthSize.y);
 }
 

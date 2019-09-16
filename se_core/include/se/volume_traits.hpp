@@ -78,9 +78,13 @@ struct voxel_traits<OFusion> {
     float x; // occ prob
     double y; // timestamp
     voxel_state st;
+    float r;  // Color information: R
+    float g;  // Color information: G
+    float b;  // Color information: B
+    int c;   // Color votes (number of color measurements fused)
   } value_type;
-  static inline value_type empty(){ return {0.f, 0.f, voxel_state::kUnknown}; }
-  static inline value_type initValue(){ return {0.f, 0.f, voxel_state::kUnknown}; }
+  static inline value_type empty(){ return {0.f, 0.f, voxel_state::kUnknown, 0.f, 0.f, 0.f, 0}; }
+  static inline value_type initValue(){ return {0.f, 0.f, voxel_state::kUnknown, 0.f, 0.f, 0.f, 0}; }
 };
 static  std::ostream& operator<<(std::ostream& os, const voxel_state & dt)
 {

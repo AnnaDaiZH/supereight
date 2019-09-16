@@ -158,6 +158,7 @@ struct bfusion_update {
 
   const float *depth;
   Eigen::Vector2i depthSize;
+  se::Image<Eigen::Vector3f> rgb;
   float noiseFactor;
   float timestamp;
   float voxelsize;
@@ -170,10 +171,11 @@ struct bfusion_update {
 
   bfusion_update(const float *d, const Eigen::Vector2i framesize, float n, float t, float vs)
       :
-      depth(d), depthSize(framesize), noiseFactor(n), timestamp(t), voxelsize(vs) {};
+      depth(d), depthSize(framesize), rgb(0, 0), noiseFactor(n), timestamp(t), voxelsize(vs) {};
 
   bfusion_update(const float *d,
                  const Eigen::Vector2i framesize,
+                 const se::Image<Eigen::Vector3f>& rgbFrame,
                  float n,
                  float t,
                  float vs,
@@ -184,6 +186,7 @@ struct bfusion_update {
       :
       depth(d),
       depthSize(framesize),
+      rgb(rgbFrame.width(), rgbFrame.height()),
       noiseFactor(n),
       timestamp(t),
       voxelsize(vs),
@@ -260,6 +263,13 @@ struct bfusion_update {
         free_blocks_->insert(morton_code_child);
 
     }
+
+    // Update the color
+    const Eigen::Vector3f rgb_measured = rgb(px.x(), px.y());
+    data.r = (rgb_measured.x() + data.r * data.c) / (data.c + 1);
+    data.g = (rgb_measured.y() + data.g * data.c) / (data.c + 1);
+    data.b = (rgb_measured.z() + data.b * data.c) / (data.c + 1);
+    data.c++;
 
     handler.set(data);
   }

@@ -290,7 +290,7 @@ struct multires_block_update {
                         const int f,
                         const float m)
       :
-      map(octree), Tcw(T), K(calib), voxel_size(vsize), offset(off), depth(d), frame(f), mu(m) {};
+      map(octree), Tcw(T), K(calib), voxel_size(vsize), offset(off), depth(d), rgb(0, 0), frame(f), mu(m) {};
 
   multires_block_update(const se::Octree<OFusion> &octree,
                         const Sophus::SE3f &T,
@@ -298,6 +298,7 @@ struct multires_block_update {
                         const float vsize,
                         const Eigen::Vector3f &off,
                         const se::Image<float> &d,
+                        const se::Image<Eigen::Vector3f>& rgbFrame,
                         const int f,
                         const float m,
                         set3i *updated_blocks,
@@ -310,6 +311,7 @@ struct multires_block_update {
       voxel_size(vsize),
       offset(off),
       depth(d),
+      rgb(rgbFrame.width(), rgbFrame.height()),
       frame(f),
       updated_blocks_(updated_blocks),
       free_blocks_(free_blocks),
@@ -321,6 +323,7 @@ struct multires_block_update {
   float voxel_size;
   const Eigen::Vector3f &offset;
   const se::Image<float> &depth;
+  const se::Image<Eigen::Vector3f> rgb;
   const int frame;
   float mu;
 
@@ -374,6 +377,14 @@ struct multires_block_update {
           const bool is_voxel = true;
           const key_t morton_code_child = block->code_;
           // Update the occupancy probability
+          //
+        // Update the color
+        const Eigen::Vector3f rgb_measured = rgb(px.x(), px.y());
+        data.r = (rgb_measured.x() + data.r * data.c) / (data.c + 1);
+        data.g = (rgb_measured.y() + data.g * data.c) / (data.c + 1);
+        data.b = (rgb_measured.z() + data.b * data.c) / (data.c + 1);
+        data.c++;
+
 
           const double delta_t = (double) (frame - data.y) / 30;
           data.x = applyWindow(data.x, SURF_BOUNDARY, delta_t, CAPITAL_T);
@@ -521,6 +532,7 @@ void integrate(se::Octree<T> &,
                float,
                const Eigen::Vector3f &,
                const se::Image<float> &,
+               const se::Image<Eigen::Vector3f>& rgbFrame,
                float,
                const unsigned,
                const int,
@@ -589,6 +601,7 @@ void integrate(se::Octree<OFusion> &map,
                float voxelsize,
                const Eigen::Vector3f &offset,
                const se::Image<float> &depth,
+               const se::Image<Eigen::Vector3f>& rgbFrame,
                float mu,
                const unsigned frame,
                const int ceiling_height_v,
@@ -615,7 +628,7 @@ void integrate(se::Octree<OFusion> &map,
 
   // Update voxel block values
   struct multires_block_update
-      functMultires(map, Tcw, K, voxelsize, offset, depth, frame, mu, updated_blocks, free_blocks, frontier_blocks_update);
+      functMultires(map, Tcw, K, voxelsize, offset, depth, rgbFrame, frame, mu, updated_blocks, free_blocks, frontier_blocks_update);
 
   se::functor::internal::parallel_for_each(active_list, functMultires);
   struct frontier_update functFrontier(map, frontier_blocks, ceiling_height_v, ground_height_v, position);
