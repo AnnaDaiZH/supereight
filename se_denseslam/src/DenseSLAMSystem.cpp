@@ -521,6 +521,7 @@ bool DenseSLAMSystem::integration(const Eigen::Vector4f &k,
 
 int DenseSLAMSystem::planning(VecPose &path,
                                VecPose &cand_views,
+                               VecCandidate &all_candidates,
                                mapvec3i *free_blocks) {
 
     se::exploration::initNewPosition(pose_ * Tbc_,
@@ -551,7 +552,8 @@ int DenseSLAMSystem::planning(VecPose &path,
                                       init_pose_(2),
                                       frontier_map_,
                                       path,
-                                      cand_views
+                                      cand_views,
+                                      all_candidates
                                       );
 
   return exploration_done;

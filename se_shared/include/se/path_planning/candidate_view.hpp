@@ -186,7 +186,8 @@ int getExplorationPath(std::shared_ptr<Octree<T> > octree_ptr,
                        const float ground_height,
                        set3i &frontier_map,
                        VecPose &path,
-                       VecPose &cand_views
+                       VecPose &cand_views,
+                       VecCandidate &all_candidates
                        ) {
 
   pose3D start = getCurrPose(pose, res);
@@ -327,6 +328,7 @@ int getExplorationPath(std::shared_ptr<Octree<T> > octree_ptr,
                << pose.q.vec().format(InLine);
     path.push_back(pose);
   }
+  all_candidates = candidate_view.candidates_;
   if (candidate_view.getExplorationStatus() == 1 || frontier_map.size() == 0) {
     return 1;
   } else {
