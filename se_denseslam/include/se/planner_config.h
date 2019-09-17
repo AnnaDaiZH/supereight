@@ -7,7 +7,7 @@
 
 #include <vector>
 #include <string>
-
+#include <Eigen/Dense>
 enum PlannerType {
   kRrtConnect = 0, kRrtStar, kInformedRrtStar, kBitStar
 };
@@ -82,6 +82,10 @@ struct Planning_Configuration {
   float dt;
 
   float sensor_depth;
+
+
+  Eigen::Vector3f map_bounds_min;
+  Eigen::Vector3f map_bounds_max;
 };
 
 inline Planning_Configuration getDefaultPlanningConfig() {
@@ -108,6 +112,8 @@ inline Planning_Configuration getDefaultPlanningConfig() {
   config.random_generator_seed = 13;
   config.dt = 0.1f;
   config.sensor_depth = 5.0f;
+  config.map_bounds_max = Eigen::Vector3f(0.f, 0.f, 2.3f);
+  config.map_bounds_min = Eigen::Vector3f(0.f, 0.f, 1.0f);
   return config;
 }
 #endif //SUPEREIGHT_PLANNER_CONFIG_H

@@ -480,6 +480,7 @@ bool DenseSLAMSystem::integration(const Eigen::Vector4f &k,
                                   funct);
       const int ceiling_height_v = (init_pose_(2)+ planning_config_.ceiling_height)/discrete_vol_ptr_->voxelDim();
       const int ground_height_v = (init_pose_(2)+ 0.2f)/discrete_vol_ptr_->voxelDim();
+
       Eigen::Vector3i position = (pose_.block<3,1>(0,3)/ voxelsize).cast<int>();
 
       set3i* frontier_blocks_update = new set3i;
@@ -530,11 +531,14 @@ int DenseSLAMSystem::planning(VecPose &path,
     int map_size_before = free_map_.size();
     insertBlocksToMap(free_map_, free_blocks);
     init_position_cleared_ = true;
-    // LOG(INFO) << "Planning free_map_  size  " << free_map_.size();
-    // if(map_size_before != free_map_.size()){
+ // no dynamic map bounds update, used for experiment with small room
+    if(planning_config_.map_bounds_min(0)!=0.f){
+       lower_map_bound_v_ = ((planning_config_.map_bounds_min + init_pose_)/discrete_vol_ptr_->voxelDim()).cast<int>();
+       upper_map_bound_v_ = ((planning_config_.map_bounds_max + init_pose_)/discrete_vol_ptr_->voxelDim()).cast<int>();
+       LOG(INFO)<< "Map bounds set to min: "<< lower_map_bound_v_.format(InLine) << ", max: "<< upper_map_bound_v_.format(InLine);
+    }else{
       getFreeMapBounds(discrete_vol_ptr_, free_map_, lower_map_bound_v_, upper_map_bound_v_);
-      // std::cout << "map bounds " << lower_map_bound_v_ << " " << upper_map_bound_v_;
-    // }
+    }
 
   float res_v = volume_dimension_.cast<float>().x() / volume_resolution_.cast<float>().x();
 
