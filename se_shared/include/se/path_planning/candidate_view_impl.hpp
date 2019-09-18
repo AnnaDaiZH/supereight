@@ -87,7 +87,7 @@ void CandidateView<T>::getCandidateViews( set3i &frontier_blocks_map, const int 
     std::advance(it, sampling_step);
     uint64_t rand_morton = it->first;
 
-    DLOG(INFO) << " morton " << rand_morton << " coord " << keyops::decode(rand_morton).format(InLine)
+    LOG(INFO) << " morton " << rand_morton << " coord " << keyops::decode(rand_morton).format(InLine)
     << " num frontier voxel "<< frontier_voxels_map[rand_morton].size();
     if (frontier_voxels_map[rand_morton].size() < frontier_cluster_size ||
       frontier_voxels_map[rand_morton].size() ==0) {
@@ -118,6 +118,7 @@ void CandidateView<T>::getCandidateViews( set3i &frontier_blocks_map, const int 
     //   candidates_[i].pose.p = Eigen::Vector3f(0, 0, 0);
     // }
     candidates_[i].pose.p = candidate_frontier_voxel.cast<float>();
+    candidates_[i].frontier_sample = candidate_frontier_voxel;
     num_cands_++;
     DLOG(INFO) << "Cand voxel " << candidate_frontier_voxel.format(InLine);
   }

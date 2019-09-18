@@ -73,8 +73,9 @@ struct Candidate
 {
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
-  se::exploration::pose3D pose; //check
-  float information_gain; // check
+  se::exploration::pose3D pose;
+  Eigen::Vector3i frontier_sample;
+  float information_gain;
   float path_length;
   VecPose path; // [voxel coord]
   int planning_solution_status;
@@ -82,6 +83,7 @@ struct Candidate
 
   Candidate(){
     pose={ {0.f, 0.f, 0.f}, {1.f, 0.f, 0.f, 0.f}};
+    frontier_sample = {0, 0, 0};
     information_gain = -1.f;
     path_length = -1.f;
     path.clear();
@@ -91,6 +93,7 @@ struct Candidate
 
   void clear(){
     pose={ {0.f, 0.f, 0.f}, {1.f, 0.f, 0.f, 0.f}};
+    frontier_sample  ={0,0,0};
     information_gain = -1.f;
     path_length = -1.f;
     path.clear();
