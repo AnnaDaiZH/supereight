@@ -56,7 +56,7 @@ class PathPlannerOmpl {
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
   /**
-   * @param [in] ow Map
+   * @param [in]  map, collision checker, planning parameters, ground height [map unit]
    * @param ss_ SimplePlanner: Create the set of classes typically needed to solve a geometric problem
    *              StateSpacePtr:  Representation of a space in which planning can be performed. Topology specific sampling, interpolation and distance are defined.
    *              RealVectorStateSpace: A state space representing R^n. The distance function is the L2 norm.
@@ -69,32 +69,43 @@ class PathPlannerOmpl {
   ~PathPlannerOmpl() {};
 
   /**
-   * Set up the planner.
-   * @param [in] start Start position for path planning. [m]
-   * @param [in] goal Goal position for path planning. [m]
+   * Set up the planner. Motion validator, optimization objective and planner type
+   * @param [in] start Start position for path planning. [map unit]
+   * @param [in] goal Goal position for path planning. [map unit]
    */
   bool setupPlanner(const Eigen::Vector3i &lower_bound, const Eigen::Vector3i &upper_bound);
+
+ /**
+ * @brief set the start and endpoint of the path by converting the two points from voxel
+ * coordinates to map units (m)
+ * @param start_v MAV's current position [voxel]
+ * @param goal_v sampled candidate position at the frontier [voxel]
+ * @return true if the start and end point are set in [map unit]
+ */
   bool setStartGoal(const Eigen::Vector3i &start_v, const Eigen::Vector3i &goal_v);
 
-  Path_v::Ptr getPathNotSimplified_v() { return path_not_simplified_v_; }
   /**
  * Plan the global path.
- * @param [in] start Start position for path planning. [m]
- * @param [in] goal Goal position for path planning. [m]
+ * @param [in] start Start position for path planning. [map unit]
+ * @param [in] goal Goal position for path planning. [map unit]
  * @return True if straight line planning was successful.
- *TODO: Instead of Eigen::Vector3d use a trajectory point type/message
  */
   int planPath(const Eigen::Vector3i &start_v, const Eigen::Vector3i &goal_v);
-
-  bool start_end_occupied() { return start_end_occupied_; };
-  bool ompl_failed() { return ompl_failed_; };
-
+/**
+ * @brief simplify the sampled path [ompl state]
+ * @param path
+ */
   void prunePath(og::PathGeometric &path);
   void simplifyPath(ompl::geometric::PathGeometric &path);
 
-  Path_v::Ptr getPath() { return path_v_; };
+  Path<kDim>::Ptr getPathNotSimplified_v() { return path_not_simplified_; }
+  Path<kDim>::Ptr getPath() { return path_; };
   float getPathLength();
-  VecPose getPathSegments();
+
+/*
+* getting the planned path [map unit]
+* return path [voxel coord]
+*/
   VecPose getPathSegments_m();
 
   void setRrtConnect();
@@ -113,18 +124,13 @@ class PathPlannerOmpl {
 
   void setSpaceBoundaries_m();
 
-
-  Path_v::Ptr path_v_ = nullptr;
-  Path_v::Ptr path_not_simplified_v_ = nullptr;
-
   std::shared_ptr<Octree<FieldType> > octree_ptr_ = nullptr;
   std::shared_ptr<CollisionCheckerV<FieldType> > pcc_ = nullptr;
   const Planning_Configuration planning_params_;
 
   float ground_height_;
   float solving_time_;
-  og::SimpleSetupPtr ss_; /// Create the set of classes typically needed to solve a
-
+  og::SimpleSetupPtr ss_;
 
   int safety_radius_v_;
   PlannerType planner_type_;
@@ -132,14 +138,8 @@ class PathPlannerOmpl {
   Path<kDim>::Ptr path_ = nullptr;
   Path<kDim>::Ptr path_not_simplified_ = nullptr;
 
-
   // OmplSetup<FieldType> ompl_setup_;
 
-
-  bool start_end_occupied_ = false;
-  bool ompl_failed_ = false;
-
-  // planing bounds, if set
   Eigen::Vector3i lower_bound_v_;
   Eigen::Vector3i upper_bound_v_;
 
@@ -159,13 +159,9 @@ PathPlannerOmpl<FieldType>::PathPlannerOmpl(const std::shared_ptr<Octree<FieldTy
     planning_params_(planning_config),
     ground_height_(ground_height),
     solving_time_(planning_config.ompl_solving_time),
-    ss_(aligned_shared<og::SimpleSetup>(ob::StateSpacePtr(new ob::RealVectorStateSpace(3))))
-{
+    ss_(aligned_shared<og::SimpleSetup>(ob::StateSpacePtr(new ob::RealVectorStateSpace(3)))) {
   safety_radius_v_ =
       static_cast<int>(planning_config.robot_safety_radius / octree_ptr_->voxelDim());
-  // Contstruct optimizing planner using RRT algorithm
-  // set Planner
-  DLOG(INFO) << "safety_radius_v_" << safety_radius_v_;
   planner_type_ = planning_config.planner_type;
   path_ = aligned_shared<Path<kDim> >();
   path_not_simplified_ = aligned_shared<Path<kDim> >();
@@ -174,9 +170,6 @@ PathPlannerOmpl<FieldType>::PathPlannerOmpl(const std::shared_ptr<Octree<FieldTy
 /**
  * IMPLEMENTATION
  */
-
-
-
 
 template<typename FieldType>
 bool PathPlannerOmpl<FieldType>::setStartGoal(const Eigen::Vector3i &start_v,
@@ -197,31 +190,23 @@ bool PathPlannerOmpl<FieldType>::setStartGoal(const Eigen::Vector3i &start_v,
   ob::ScopedState<> start_ompl(ss_->getSpaceInformation());
   ob::ScopedState<> goal_ompl(ss_->getSpaceInformation());
 
-  // voxel to meter
+  // voxel to [map unit]
   Eigen::Vector3f start_m = start_v.cast<float>() * octree_ptr_->voxelDim();
   Eigen::Vector3f goal_m = goal_v.cast<float>() * octree_ptr_->voxelDim();
 
   OmplToEigen::convertState(start_m, &start_ompl);
   OmplToEigen::convertState(goal_m, &goal_ompl);
-  // [m]
   // ompl_setup_.setStartAndGoalStates(start_ompl, goal_ompl, 0.05);
   // ompl_setup_.setup();
   ss_->setStartAndGoalStates(start_ompl, goal_ompl, 0.05);
   return true;
 }
 
-/**
- * [voxel coord]
- * @param start_v
- * @param goal_v
- * @return
- */
 template<typename FieldType>
 bool PathPlannerOmpl<FieldType>::setupPlanner(const Eigen::Vector3i &lower_bound,
                                               const Eigen::Vector3i &upper_bound) {
   DLOG(INFO) << "start setting up planner voxel based";
-//  ss_->clear();
-  // TODO to be replaced
+
   // Get map boundaries and set space boundaries [voxel coord]
   lower_bound_v_ = lower_bound;
   upper_bound_v_ = upper_bound;
@@ -229,9 +214,6 @@ bool PathPlannerOmpl<FieldType>::setupPlanner(const Eigen::Vector3i &lower_bound
              << upper_bound_v_.format(InLine);
   setSpaceBoundaries_m(); // [m]
 
-  // ompl_setup_.setDefaultObjective();
-  // ompl_setup_.setCollisionChecking(pcc_, safety_radius_v_);
-  // ompl_setup_.setDefaultPlanner();
 
   auto motion_validator =
       aligned_shared<MotionValidatorOccupancySkeleton<FieldType> >(ss_->getSpaceInformation(),
@@ -244,7 +226,7 @@ bool PathPlannerOmpl<FieldType>::setupPlanner(const Eigen::Vector3i &lower_bound
       objective(aligned_shared<ob::PathLengthOptimizationObjective>(ss_->getSpaceInformation()));
   ss_->getProblemDefinition()->setOptimizationObjective(objective);
 
-  // Set planner // TODO: Currently fixed to Informend RRT*
+  // Set planner
   if (planning_params_.planner_type == kRrtConnect) {
     setRrtConnect();
   } else if (planning_params_.planner_type == kRrtStar) {
@@ -278,18 +260,14 @@ int PathPlannerOmpl<FieldType>::planPath(const Eigen::Vector3i &start_v,
   // Attempt to solve the problem within x seconds of planning time
   ob::PlannerStatus solved = ss_->solve(solving_time_);
   DLOG(INFO) << ss_->getPlanner()->getName() << " found path : " << solved;
-  // ob::PlannerStatus solved = ompl_setup_.solve(solving_time_);
-  // LOG(INFO) << ompl_setup_.getPlanner()->getName() << " found path : " << solved;
 
   if (solved) {
     if (ss_->haveExactSolutionPath()) {
 
       // Get non-simplified path and convert to Eigen
-      // og::PathGeometric path = ompl_setup_.getSolutionPath();
       og::PathGeometric path = ss_->getSolutionPath();
 
       // Simplify path
-      // ompl_setup_.prunePath();
       prunePath(path);
 
       // Convert final path to Eigen
@@ -300,25 +278,17 @@ int PathPlannerOmpl<FieldType>::planPath(const Eigen::Vector3i &start_v,
     } else {
       LOG(INFO) << "\033[1;31mONLY APPROXIMATE SOLUTION FOUND."
                    ".\033[0m";
-      // og::PathGeometric path = ompl_setup_.getSolutionPath();
       og::PathGeometric path = ss_->getSolutionPath();
       prunePath(path);
       // path.printAsMatrix(std::cout);
       // const double dist_to_goal = ss_->getProblemDefinition()->getSolutionDifference();
-      // const double dist_to_goal = ompl_setup_.getProblemDefinition()->getSolutionDifference();
       // DLOG(INFO) << "solution difference " << dist_to_goal;
 
-//      path.printAsMatrix(myfile);
-      // LOG(INFO) << "with an optimization objective value of "
-      //           << ompl_setup_.getProblemDefinition()->getSolutionPath()->
-      //           cost(ompl_setup_.getProblemDefinition()->getOptimizationObjective());
       DLOG(INFO) << "with an optimization objective value of "
                  << ss_->getProblemDefinition()->getSolutionPath()->cost(ss_->getProblemDefinition()->getOptimizationObjective());
 
       ob::PlannerData planner_data(ss_->getSpaceInformation());
       ss_->getPlannerData(planner_data);
-      //                 ob::PlannerData planner_data(ompl_setup_.getSpaceInformation());
-      // ompl_setup_.getPlannerData(planner_data);
 
       OmplToEigen::convertPath(path, path_, planning_params_.robot_safety_radius);
 
@@ -331,14 +301,10 @@ int PathPlannerOmpl<FieldType>::planPath(const Eigen::Vector3i &start_v,
         DLOG(INFO) << "planner data received";
 
       }
-      ompl_failed_ = true;
       return 2;
     }
   } else {
     LOG(INFO) << "\033[1;31mNO STRAIGHT-LINE SOLUTION FOUND. OMPL FAILED.\033[0m";
-    // ss_->print(std::cout);
-    ompl_failed_ = true;
-
     return -1;
   }
 
@@ -397,9 +363,7 @@ void PathPlannerOmpl<FieldType>::simplifyPath(ompl::geometric::PathGeometric &pa
     tryMore = simplifier.reduceVertices(path);
   }
 }
-/**
-* set the state space boundaries in map units
-*/
+
 template<typename FieldType>
 void PathPlannerOmpl<FieldType>::setSpaceBoundaries_m() {
   ob::RealVectorBounds bounds(3);
@@ -410,7 +374,7 @@ void PathPlannerOmpl<FieldType>::setSpaceBoundaries_m() {
   upper_bound_ = upper_bound_v_.cast<float>() * dim;
   bounds.setLow(0, lower_bound_v_.x() * dim - buffer_m);
   bounds.setLow(1, lower_bound_v_.y() * dim - buffer_m);
-  bounds.setLow(2, ground_height_+ planning_params_.planning_height_min);
+  bounds.setLow(2, ground_height_ + planning_params_.planning_height_min);
   bounds.setHigh(0, upper_bound_v_.x() * dim + buffer_m);
   bounds.setHigh(1, upper_bound_v_.y() * dim + buffer_m);
   bounds.setHigh(2, ground_height_ + planning_params_.planning_height_min);
@@ -421,23 +385,6 @@ template<typename FieldType>
 float PathPlannerOmpl<FieldType>::getPathLength() {
   return ss_->getProblemDefinition()->getSolutionPath()->cost(ss_->getProblemDefinition()->getOptimizationObjective()).value();
 }
-
-template<typename FieldType>
-VecPose PathPlannerOmpl<FieldType>::getPathSegments() {
-  VecPose path;
-  for (auto it_i = path_v_->states.begin(); it_i != path_v_->states.end(); ++it_i) {
-    pose3D tmp({0.f, 0.f, 0.f}, {1.0f, 0.f, 0.f, 0.f});
-    tmp.p = (*it_i).segment.cast<float>();
-    path.push_back(tmp);
-  }
-  return path;
-}
-
-/*
-* getting the planned path [m]
-* return path in voxel coord
-*/
-
 
 template<typename FieldType>
 VecPose PathPlannerOmpl<FieldType>::getPathSegments_m() {
@@ -456,7 +403,6 @@ void PathPlannerOmpl<FieldType>::setInformedRrtStar() {
   std::shared_ptr<og::InformedRRTstar>
       planner = aligned_shared<og::InformedRRTstar>(ss_->getSpaceInformation());
   planner->setGoalBias(0.08);
-  // planner->setRange(0.5);
   planner->setNumSamplingAttempts(50);
   ss_->setPlanner(planner);
 }
@@ -474,8 +420,6 @@ template<typename FieldType>
 void PathPlannerOmpl<FieldType>::setRrtStar() {
 
   std::shared_ptr<og::RRTstar> planner = aligned_shared<og::RRTstar>(ss_->getSpaceInformation());
-  // planner_->setGoalBias(0.05);
-  // planner_->setRange(15);
   planner->setNumSamplingAttempts(150);
   ss_->setPlanner(planner);
 }
