@@ -41,7 +41,7 @@ class OmplToEigen {
   virtual ~OmplToEigen() = default;
 
   /**
-   * Convert Ompl path to Eigen path.
+   * Convert Ompl path [map unit] to Eigen path.
    * @param [in] ompl_path Path of type ompl::geometric::PathGeometric.
    * @param [out] eigen_path Path in Eigen format.
    *
@@ -67,25 +67,6 @@ class OmplToEigen {
     }
   };
 
-  static void convertPath(ompl::geometric::PathGeometric &ompl_path,
-                          Path_v::Ptr eigen_path,
-                          int radius_v) {
-    std::vector<ompl::base::State *> &states = ompl_path.getStates();
-
-    for (ompl::base::State *state : states) {
-      State_v state_v;
-      Eigen::Vector3i position_v
-          (static_cast<int>(round(state->as<ompl::base::RealVectorStateSpace::StateType>()->values[0])),
-           static_cast<int>(round(state->as<ompl::base::RealVectorStateSpace::StateType>()->values[1])),
-           static_cast<int>(round(state->as<ompl::base::RealVectorStateSpace::StateType>()->values[2])));
-
-      state_v.segment = position_v;
-      state_v.segment_radius = radius_v;
-
-      // Save the 3D path in output Eigen format
-      eigen_path->states.push_back(state_v);
-    }
-  };
   /**
    * Convert Ompl state to Eigen Vector.
    * @param [in] state Position (state) in ompl::base::State type.
@@ -102,7 +83,7 @@ class OmplToEigen {
     return eigen_point;
   };
 
-  // state [meter] to voxel
+  // state [map unit] to voxel
   static Eigen::Vector3i convertState_v(const ompl::base::State &state, const float dim) {
 
     Eigen::Vector3i eigen_point(static_cast<int>(state.as<ompl::base::RealVectorStateSpace::StateType>()->values[0]/dim),
@@ -112,7 +93,7 @@ class OmplToEigen {
     return eigen_point;
   };
   /**
-   * Convert Eigen Vector to ompl scoped state.
+   * Convert Eigen Vector [map unit] to ompl scoped state.
    * @param [in] state Position (state) as Eigen::Vector type.
    * @param [out] scoped_state Converted state as ompl::base::ScopedState type.
    */
@@ -122,13 +103,6 @@ class OmplToEigen {
     (*scoped_state)[0] = state.x();
     (*scoped_state)[1] = state.y();
     (*scoped_state)[2] = state.z();
-  };
-  static void convertState(const Eigen::Vector3i &state_v,
-                           ompl::base::ScopedState<> *scoped_state) {
-
-    (*scoped_state)[0] = state_v.x();
-    (*scoped_state)[1] = state_v.y();
-    (*scoped_state)[2] = state_v.z();
   };
 };
 

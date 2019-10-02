@@ -253,28 +253,14 @@ bool isFrontier(const se::Octree<OFusion> &map,
       map.fetch_octant(face_voxel(0), face_voxel(1), face_voxel(2), node, is_voxel_block);
       // CASE 2: not same voxelblock but is a voxel
       if (is_voxel_block) {
-        se::VoxelBlock<OFusion> *block = static_cast<se::VoxelBlock<OFusion> *> (node);
-        // std::cout << "prob " << block->data(face_voxel).x << " state " << block->data(face_voxel).st << std::endl;
-        if (block->data(face_voxel).x == 0.0f)
+        auto block_ptr = dynamic_cast<se::VoxelBlock<OFusion> *> (node);
+        if (block_ptr->data(face_voxel).x == 0.0f)
           return true;
 
         // CASE 3: not same voxelblock but belongs to a node at leaf level - 1
-
+        // TODO: @Sot after integrating dense allocation, handle frontier voxel next to unknown
+        //  nodes. Code used to check against leaf level removed.
       }
-      // else if(map.isRoot(node) && se::keyops::level(node->code_)==0){
-      //   continue;
-      // } else if (node->side_ == 2 * BLOCK_SIDE)  {
-      //   // in case the neighbour node is also not in the same parent
-
-      //   const key_t octant = node->code_;
-      //   const int level = se::keyops::level(node->code_);
-      //   const unsigned int id = se::child_id(octant, level , map.max_level());
-      //   auto &data = node->parent()->value_[id];
-      //   if (data.x ==0.0f) {
-      //     DLOG(INFO) << "level " << level;
-      //     return true;
-      //   }
-      // }
     }
   }
   return false;
