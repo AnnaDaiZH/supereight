@@ -103,8 +103,8 @@ void CandidateView<T>::getCandidateViews( set3i &frontier_blocks_map, const int 
     DLOG(INFO) << " rand voxel " << rand_voxel << " size " << frontier_voxels_map[rand_morton].size();
     Eigen::Vector3i candidate_frontier_voxel = frontier_voxels_map[rand_morton].at(rand_voxel);
     boundHeight(candidate_frontier_voxel.z(),
-                    planning_config_.height_max + ground_height_,
-                    planning_config_.height_min + ground_height_,
+                    planning_config_.planning_height_max + ground_height_,
+                    planning_config_.planning_height_min + ground_height_,
                     res_);
 
     // bool is_free = pcc_->isSphereSkeletonFreeCand(candidate_frontier_voxel, static_cast<int>(
@@ -512,12 +512,12 @@ VecPose CandidateView<T>::addPathSegments(const pose3D &start_in,
   int start_h = start.p.z();
   int goal_h = goal.p.z();
   boundHeight(start_h,
-                    planning_config_.height_max + ground_height_,
-                    planning_config_.height_min + ground_height_,
+                    planning_config_.planning_height_max + ground_height_,
+                    planning_config_.planning_height_min + ground_height_,
                     res_);
   boundHeight(goal_h,
-                    planning_config_.height_max + ground_height_,
-                    planning_config_.height_min + ground_height_,
+                    planning_config_.planning_height_max + ground_height_,
+                    planning_config_.planning_height_min + ground_height_,
                     res_);
 
   DLOG(INFO) << start.p.format(InLine) << " " << start_h;

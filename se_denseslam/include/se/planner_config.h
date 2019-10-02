@@ -7,7 +7,7 @@
 
 #include <vector>
 #include <string>
-
+#include <Eigen/Dense>
 enum PlannerType {
   kRrtConnect = 0, kRrtStar, kInformedRrtStar, kBitStar
 };
@@ -33,12 +33,15 @@ struct Planning_Configuration {
   int fov_vert;
 
   /**
-   * deg
+   * [m] sensor model information
+   */
+  float sensor_depth;
+
+  /**
+   * [deg] sparse raycasting parameter used in information gain calculation
    */
   int dphi;
   int dtheta;
-
-  bool clear_sphere_for_planning;
 
   /**
    * [m] set all voxel inside the sphere to voxel state free
@@ -48,8 +51,10 @@ struct Planning_Configuration {
   /**
   * [m] height boundaries
   */
-  float height_max;
-  float height_min;
+  float planning_height_max;
+  float planning_height_min;
+  float frontier_height_max;
+  float frontier_height_min;
 
   /**
   * [m]
@@ -69,8 +74,6 @@ struct Planning_Configuration {
 
   PlannerType planner_type;
 
-  float ceiling_height;
-
   float max_yaw_rate;
 
   float v_max;
@@ -79,9 +82,14 @@ struct Planning_Configuration {
 
   int random_generator_seed;
 
+  /**
+   * [s] used for path interpolation to control the MAV's velocity in Gazebo
+   */
   float dt;
 
-  float sensor_depth;
+
+  Eigen::Vector3f map_bounds_min;
+  Eigen::Vector3f map_bounds_max;
 };
 
 inline Planning_Configuration getDefaultPlanningConfig() {
@@ -92,22 +100,24 @@ inline Planning_Configuration getDefaultPlanningConfig() {
   config.fov_vert = 90;
   config.dphi = 10;
   config.dtheta = 20;
-  config.clear_sphere_for_planning = true;
   config.clearance_radius = 1.0f;
-  config.height_max = 2.3f;
-  config.height_min = 1.0f;
+  config.planning_height_max = 2.3f;
+  config.planning_height_min = 1.0f;
   config.skeleton_sample_precision = 0.05;
   config.ompl_solving_time = 0.5;
   config.min_loop_for_termination = 10;
   config.frontier_cluster_size = 12;
   config.planner_type = kInformedRrtStar;
-  config.ceiling_height = 3.0f;
+  config.frontier_height_max = 3.0f;
+  config.frontier_height_min = 0.3f;
   config.max_yaw_rate = 0.523;
   config.v_max = 1.0f;
   config.yaw_optimization = true;
   config.random_generator_seed = 13;
   config.dt = 0.1f;
   config.sensor_depth = 5.0f;
+  config.map_bounds_max = Eigen::Vector3f(0.f, 0.f, 2.3f);
+  config.map_bounds_min = Eigen::Vector3f(0.f, 0.f, 1.0f);
   return config;
 }
 #endif //SUPEREIGHT_PLANNER_CONFIG_H
