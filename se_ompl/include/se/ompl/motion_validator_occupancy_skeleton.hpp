@@ -13,16 +13,6 @@
 #ifndef PTP_MOTIONVALIDATOROCCUPANCYSKELETON_HPP
 #define PTP_MOTIONVALIDATOROCCUPANCYSKELETON_HPP
 
-/**
- * Motion Planning, OMPL Motion Validator.
- *
- * Copyright (C) 2018 Imperial College London.
- * Copyright (C) 2018 ETH Zürich.
- *
- * @file MotionValidator.hpp
- *
- * @date June 03, 2017
- */
 
 #include <glog/logging.h>
 #include <ctime>

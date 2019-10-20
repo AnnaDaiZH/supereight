@@ -55,6 +55,7 @@
 #include <map>
 
 #include <se/utils/eigen_utils.h>
+#include "se/path_planning/exploration_main.hpp"
 #include "se/path_planning/candidate_view.hpp"
 #include "se/path_planning/exploration_utils.hpp"
 #include "se/path_planning/init_new_position.hpp"

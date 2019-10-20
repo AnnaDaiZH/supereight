@@ -65,7 +65,8 @@ class CandidateView {
                 const float step,
                 const float ground_height);
 
-  void getCandidateViews(set3i &frontier_blocks_map, const int frontier_cluster_size);
+  int getCandidateViews(set3i &frontier_blocks_map, const int frontier_cluster_size);
+  void sampleCandidateViews(set3i &frontier_blocks_map, const int frontier_cluster_size);
 
   void printFaceVoxels(const Eigen::Vector3i &voxel);
 
@@ -80,12 +81,10 @@ class CandidateView {
   void calculateUtility(Candidate &candidate);
   int getBestCandidate();
 
-  float getIGWeight_tanh(const float tanh_range,
-                         const float tanh_ratio,
-                         const float t,
-                         const float prob_log,
-                         float &t_hit,
-                         bool &hit_unknown) const;
+  void getBestYawandGain(const float fov_hor,
+                         const std::map<int, float> &gain_per_yaw,
+                         int &best_yaw,
+                         float &best_yaw_gain);
 
   VecPose getFinalPath(Candidate &candidate);
   VecPose getYawPath(const pose3D &start, const pose3D &goal);
@@ -157,182 +156,6 @@ CandidateView<T>::CandidateView(const std::shared_ptr<Octree<T> > octree_ptr,
   LOG(INFO)<< "ig total " << ig_total_ << " ig target " << ig_target_ ;
   candidates_.resize(num_sampling_);
   DLOG(INFO) << "setup candidate view";
-}
-
-/**
- * calculates exploration path
- * for developing and visualization purposes also return candidate views
- * @tparam T Ofusion or SDF
- * @param shared_ptr octree_ptr : increments reference count and makes the function an owner, the
- * octree will stay alive as long as the function is sing it
- * @param frontier_map
- * @param res [m/voxel]
- * @param step interval to stride along a ray
- * @param planning_config
- * @param config supereight configuration
- * @param pose current camera pose
- * @param [out] path
- * @param [out] cand_views
- */
-template<typename T>
-int getExplorationPath(std::shared_ptr<Octree<T> > octree_ptr,
-                       const float res,
-                       const float step,
-                       const Planning_Configuration &planning_config,
-                       const Configuration &config,
-                       const Eigen::Matrix4f &pose,
-                       const Eigen::Vector3i &lower_bound,
-                       const Eigen::Vector3i &upper_bound,
-                       const float ground_height,
-                       set3i &frontier_map,
-                       VecPose &path,
-                       VecPose &cand_views
-                       ) {
-
-  pose3D start = getCurrPose(pose, res);
-  bool valid_path = false;
-  auto collision_checker_v = aligned_shared<CollisionCheckerV<T> >(octree_ptr, planning_config);
-
-  LOG(INFO) << "frontier map size " << frontier_map.size();
-  // Candidate view generation
-  CandidateView<T> candidate_view
-      (octree_ptr, planning_config, collision_checker_v, res, config, pose, step, ground_height);
-
-  int frontier_cluster_size = planning_config.frontier_cluster_size;
-  int counter = 0;
-  while (candidate_view.getNumValidCandidates() ==0 && frontier_map.size() != 0) {
-    DLOG(INFO) << "get candidates";
-    candidate_view.getCandidateViews(frontier_map, frontier_cluster_size);
-
-    if(counter == 20 ){
-      LOG(INFO) << "no candidates ";
-      break;
-    }
-    counter++;
-  }
-
-  DLOG(INFO)<< "frontier map size" << frontier_map.size();
-#pragma omp parallel for
-  for (int i = 0; i < planning_config.num_cand_views; i++) {
-
-    if (candidate_view.candidates_[i].pose.p != Eigen::Vector3f(0, 0, 0)) {
-      auto collision_checker = aligned_shared<CollisionCheckerV<T> >(octree_ptr, planning_config);
-      auto path_planner_ompl_ptr = aligned_shared<PathPlannerOmpl<T> >(octree_ptr,
-                                                                       collision_checker,
-                                                                       planning_config,
-                                                                       ground_height);
-      // LOG(INFO) << "Candidate " << i << " goal coord " << cand_views[i].p.format(InLine);
-      DLOG(INFO) << "Candidate " << i << " start " << start.p.format(InLine) << " goal "
-                 << candidate_view.candidates_[i].pose.p.format(InLine);
-
-      bool setup_planner = path_planner_ompl_ptr->setupPlanner(lower_bound, upper_bound);
-      DLOG(INFO) << "setup planner successful " << setup_planner;
-      int path_planned = path_planner_ompl_ptr->planPath(start.p.cast<int>(),
-                                                         candidate_view.candidates_[i].pose.p.template cast<
-                                                             int>());
-      candidate_view.candidates_[i].planning_solution_status = path_planned;
-      DLOG(INFO) << "path planned " << path_planned;
-
-
-      if (path_planned < 0 ) {
-        Planning_Configuration planning_config_tmp = planning_config;
-        float robot_safety_radius = planning_config.robot_safety_radius;
-        for(;robot_safety_radius>=0.3f ; robot_safety_radius-=0.2f){
-          planning_config_tmp.robot_safety_radius = robot_safety_radius;
-          DLOG(INFO) << "robot_safety_radius "<< planning_config_tmp.robot_safety_radius;
-          path_planner_ompl_ptr = aligned_shared<PathPlannerOmpl<T> >(octree_ptr,
-                                                                       collision_checker,
-                                                                       planning_config_tmp,
-                                                                       ground_height);
-
-          setup_planner = path_planner_ompl_ptr->setupPlanner(lower_bound, upper_bound);
-
-          path_planned = path_planner_ompl_ptr->planPath(start.p.cast<int>(),
-                                                         candidate_view.candidates_[i].pose.p.template cast<
-                                                             int>());
-          candidate_view.candidates_[i].planning_solution_status = path_planned;
-
-          if(path_planned >0){
-            LOG(INFO) << "Found a path for cand " << i;
-            break;
-          }else{
-            candidate_view.candidates_[i].path_length = (start.p - candidate_view.candidates_[i].pose.p).squaredNorm();
-            VecPose vec;
-            vec.push_back(candidate_view.candidates_[i].pose);
-            candidate_view.candidates_[i].path = vec;
-          }
-        }
-        // voxel coord
-
-      }
-
-       if(path_planned>0) {
-        valid_path = true;
-        candidate_view.candidates_[i].path_length = path_planner_ompl_ptr->getPathLength();
-
-        VecPose vec = path_planner_ompl_ptr->getPathSegments_m(); //[voxel coord]
-        candidate_view.candidates_[i].path = vec;
-
-        if (path_planned == 2  ) {
-          DLOG(INFO) << "cand changed from " << candidate_view.candidates_[i].pose.p.format(InLine)
-                     << " to "
-                     << candidate_view.candidates_[i].path[candidate_view.candidates_[i].path.size()
-                         - 1].p.format(InLine);
-          candidate_view.candidates_[i].pose.p =
-              candidate_view.candidates_[i].path[candidate_view.candidates_[i].path.size() - 1].p;
-        }
-        // DLOG(INFO) << "seg length " << all_path[i].size() << std::endl;
-      }
-    }
-  }
-
-  candidate_view.calculateCandidateViewGain();
-
-  int best_cand_idx = -1;
-  bool use_curr_pose = true;
-  bool force_travelling = candidate_view.curr_pose_.information_gain < candidate_view.getTargetIG();
-  if (valid_path) {
-    best_cand_idx = candidate_view.getBestCandidate();
-    DLOG(INFO) << "[se/candview] best candidate is "
-              << (candidate_view.candidates_[best_cand_idx].pose.p * res).format(InLine);
-    // std::cout << " path length of best cand "
-    //           << candidate_view.candidates_[best_cand_idx].path.size() << std::endl;
-    use_curr_pose =
-        candidate_view.candidates_[best_cand_idx].utility < candidate_view.curr_pose_.utility;
-    LOG(INFO) << "force travelling " << force_travelling << " use curr pose " << use_curr_pose
-              << " candidate utility " << candidate_view.candidates_[best_cand_idx].utility
-              << " curr pose utility " << candidate_view.curr_pose_.utility;
-
-  }
-
-  VecPose path_tmp;
-  if (valid_path && (!use_curr_pose || force_travelling)) {
-    // candidate_view.addPathSegments(planning_config.robot_safety_radius*2.5 ,best_cand_idx);
-    // path_tmp = candidate_view.candidates_[best_cand_idx].path;
-    path_tmp = candidate_view.getFinalPath(candidate_view.candidates_[best_cand_idx]);
-    // best_candidate = candidate_view.candidates_[best_cand_idx];
-  } else {
-    path_tmp = candidate_view.getFinalPath(candidate_view.curr_pose_);
-    // best_candidate = candidate_view.curr_pose_;
-  }
-  for (int i = 0; i <= planning_config.num_cand_views; i++) {
-    if (candidate_view.candidates_[i].pose.p == Eigen::Vector3f(0, 0, 0)) {
-      continue;
-    }
-    cand_views.push_back(candidate_view.candidates_[i].pose);
-  }
-
-  for (const auto &pose : path_tmp) {
-    DLOG(INFO) << "cand view " << (pose.p * res).format(InLine) << " " << pose.q.w() << " "
-               << pose.q.vec().format(InLine);
-    path.push_back(pose);
-  }
-  if (candidate_view.getExplorationStatus() == 1 || frontier_map.size() == 0) {
-    return 1;
-  } else {
-    return -1;
-  }
-
 }
 
 } // namespace exploration
